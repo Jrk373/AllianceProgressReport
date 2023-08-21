@@ -1,0 +1,56 @@
+---
+title: My Quarto Document
+author: John Doe
+date: 2023-05-22
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+    highlight_style: github
+    css: styles.css
+    js: script.js
+editor_options:
+  spellcheck: true
+  code_theme: Cobalt
+  wrap_text: true
+site:
+  title: My Quarto Site
+  subtitle: A Subtitle for the Site
+  logo: logo.png
+  favicon: favicon.ico
+  social:
+    - name: Twitter
+      url: https://twitter.com/quarto_lang
+    - name: GitHub
+      url: https://github.com/quarto-dev/quarto-cli
+---
+
+This example covers various options for customizing a Quarto document. Here's a breakdown of the key-value pairs included:
+
+1. `title`: Specifies the title of the document.
+2. `author`: Specifies the author of the document.
+3. `date`: Specifies the date of the document.
+4. `output`: Configures the output format and options for the HTML document.
+   - `theme`: Specifies the theme for the HTML document (e.g., "readable").
+   - `toc`: Enables the table of contents in the HTML document.
+   - `toc_float`: Enables a floating table of contents.
+   - `toc_depth`: Specifies the maximum depth of headings included in the table of contents.
+   - `code_folding`: Configures the display of code folding in the document.
+   - `highlight_style`: Specifies the code syntax highlighting style (e.g., "github").
+   - `css`: Specifies an external CSS file to include in the document.
+   - `js`: Specifies an external JavaScript file to include in the document.
+5. `editor_options`: Configures options for the Quarto editor.
+   - `spellcheck`: Enables spellcheck in the editor.
+   - `code_theme`: Specifies the code editor theme (e.g., "monokai").
+   - `wrap_text`: Enables text wrapping in the editor.
+6. `site`: Configures options for a Quarto site.
+   - `title`: Specifies the title of the site.
+   - `subtitle`: Specifies a subtitle for the site.
+   - `logo`: Specifies a logo image for the site.
+   - `favicon`: Specifies a favicon for the site.
+   - `social`: Specifies social media profiles for the site.
+
+Feel free to modify these values or add/remove options as per your requirements.
