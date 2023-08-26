@@ -1,0 +1,1389 @@
+---
+title: "Alliance ACO Progress Report"
+subtitle: "Northern Arizona Regional Behavioral Health Alliance Accountable Care Organization"
+author: "John Ryan Kivela, MA"
+date: today
+format:
+  html:
+    theme: pulse
+    embed-resources: true
+    toc: true
+    code-fold: true
+    footnotes-hover: true
+---
+
+```{r setup, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Load Packages and libraries
+library(choroplethr)
+library(choroplethrMaps)
+library(ggh4x)
+library(gt)
+library(scales)
+library(tidyverse)
+library(readxl)
+library(webshot)
+library(RODBC)
+
+# Set up ODBC Connection
+ QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
+
+```
+
+```{r}
+#| label: Load Data
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Load data
+# GlblMmbrshp <- read_xlsx("./data/data_original_glblmbrs_2023-08-25_globalMembersRoster.xlsx", sheet = "Sheet1")
+
+VBP_Rep_Comb_validation_complete <- read_csv("./data/VBPQR_AllAPsCombined_Cleaned_complete_2023-08-23.csv")
+AllianceProvAllocation <- read_csv("./data/data_original_2022-10-01_alliancePrvdrMbrAllocation.csv")
+coordinate_cities <- read_csv("./data/data_reference_allianceCitiesAndClinics.csv")
+ZipDatabase <- read.csv("./data/data_reference_zip_code_database.csv")
+data("county.map")
+ZipDatabase <- read.csv("./data/data_reference_zip_code_database.csv")
+```
+
+```{r}
+#| label: Create_Common_Objects
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Create common objects for all of document
+
+# VBP Report Date Information
+Data.Period = "2023-07-31" #claimsAdjudicated Through Date
+Reportasof = "2023-08-23" #Report as of date from VBP Quality report
+ProgressReportDate = "2023-08-31" # Data that the VBPQR was released, or represents, usually the 1st of the month for the Progress Report
+Members_Report_Date = "2023-08-25" #Date that the global members data was extracted
+
+current_date <- "2022-08-25"
+
+Provider_ShortName <- (c("CBI", "CPIH", "EHS", "LCBHC", "MMHC", "SHG", "SBH", "TGC", "WYGC"))
+
+NAZ_Counties <- (c("Apache", "Coconino", "Mohave", "Navajo", "Yavapai"))
+
+# Various vectors of data for mapping features
+
+MainStates <- map_data("state") #table with state info, lat, long, etc.
+Arizona <- filter(MainStates, region == "arizona")
+AZ_County <- (c("Apache County", "Coconino County", "Mohave County", "Navajo County", "Yavapai County"))
+AZ_County_Map <- (c("Apache", "Coconino", "Mohave", "Navajo", "Yavapai"))
+countyref <- county.map |> filter(NAME %in% AZ_County_Map)
+NAZ_Zips <- ZipDatabase |> filter(county %in% AZ_County) |> select(zip)
+Vec_AZ_Zips <- NAZ_Zips$zip
+
+# Create NCQA Mean vector
+NCQA_MeanList = c(.5729, .3936, .401, .93)
+
+# Vector of alliance allocations
+Allocations <- AllianceProvAllocation$`Annual Member Months`
+```
+
+# Introduction
+
+The Northern Arizona Regional Behavioral Health Alliance (NARBHA), hereafter "The Alliance", is a collaborative project between The Narbha Institute (TNI) and Blue Cross Blue Shield of Arizona - Health Choice (BCBSAZ-HC). It is a first of its kind Behavioral Health Accountable Care Organization (ACO), specifically created to improve the health outcomes of disadvantaged people in rural Arizona. The focus of the Alliance is quality improvement and member satisfaction in our rural communities, as well as clinical advancement of our providers and program development of best practices.
+
+This report outlines Alliance Provider performance, areas of strengths and focus, and plans for improvement and advancement. Our initial review revealed that The Alliance is performing above average for all measures. Areas of focus were identified to assist individual providers that are not meeting the performance standard.
+
+Overall, Alliance performance improved over the last month, increasing it's level of performance above and beyond the measures, Follow Up After Hospitalization (FUH 7 Day), Anti-depressant Medication Management (AMM2), and Use of Opioids at High Dosage (HDO).
+
+
+
+# Enrollments
+
+The next few code sets queries the HCA data bases to gather data from the Global Members Data base.
+
+## Enrollment Roster
+
+```{sql, connection = QRPTP01, output.var = "GM_Enrollments_AllACC"}
+#| label: AHCCCS Enrollments
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+declare @AzACC int = narbha.dbo.ufn_GetIntLobIdFromLobName('ArizonaAcc', getdate());
+
+SELECT * 
+
+FROM GlobalMembers.dbo.Enrollments 
+
+WHERE lobid = @AzACC 
+  AND void = 0 
+  
+ORDER BY PrimaryId , EnrollmentDate DESC
+
+```
+
+## All AZ Enrollments Data
+
+```{sql, connection = QRPTP01, output.var = "GM_ALLAZ_Enrollments"}
+#| label: GM All AZ Enrollments
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+SELECT * 
+
+FROM GlobalMembers.dbo.DailyMemberShipAllArizonaEnrollments
+
+WHERE void = 0 
+  
+ORDER BY PrimaryId
+```
+
+## All AZ Addresses Data
+
+```{sql, connection = QRPTP01, output.var = "GM_ALLAZ_Addresses"}
+#| label: GM All AZ Addresses
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+SELECT * 
+
+FROM GlobalMembers.dbo.DailyMemberShipAllArizonaAddresses
+
+WHERE Void = 0 
+  
+```
+
+## Primary Assigned Clinic
+
+```{sql, connection = QRPTP01, output.var = "GM_PrimaryAssignedClinic"}
+#| label: GM Primary Assigned Clinic
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+SELECT * 
+
+FROM GlobalMembers.dbo.PrimaryAssignedClinic
+
+WHERE Void = 0 
+  
+```
+
+## Health Homes ID list
+
+```{sql, connection = QRPTP01, output.var = "GM_HealthHomes"}
+#| label: GM Health Homes
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+SELECT * 
+
+FROM GlobalMembers.dbo.HealthHomes
+
+WHERE Void = 0 
+  
+```
+
+## Demographics
+
+### Client Demographics
+
+```{sql, connection = QRPTP01, output.var = "Clients_Demographics_AllACC"}
+#| label: Client Demograhics
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+declare @AzACC int = narbha.dbo.ufn_GetIntLobIdFromLobName('ArizonaAcc', getdate());
+
+SELECT * 
+
+FROM GlobalMembers.dbo.Clients
+
+WHERE lobid = @AzACC 
+  AND void = 0 
+  
+ORDER BY LastName DESC
+
+```
+
+### Dugless Demographics
+
+```{sql, connection = QRPTP01, output.var = "GM_DUGLess"}
+#| label: GM DugLess
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+SELECT * 
+
+FROM GlobalMembers.dbo.DUGLessDemographics
+
+WHERE Void = 0 
+  
+```
+
+```{r}
+#| label: Enrollment
+#| eval: true
+#| include: false
+#| echo: false
+#| warning: false
+#| error: false
+
+
+# Identify Alliance Membership
+
+# Merge Enrollment files
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = GM_Enrollments_AllACC,
+        y = Clients_Demographics_AllACC,
+        by = "PrimaryId",
+        all.x = TRUE)
+  
+AllianceEnrolledMembers_Merge <-  
+  AllianceEnrolledMembers_Merge |> 
+  select(
+    PrimaryId,
+    FirstName,
+    LastName,
+    DOB,
+    DOD,
+    Sex,
+    Race,
+    Ethnicity,
+    SpokenLanguage,
+    EnrollmentDate,
+    DisenrollmentDate
+  )
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = GM_ALLAZ_Enrollments,
+        by = "PrimaryId",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
+  select(
+    PrimaryId,
+    AhcccsId,
+    FirstName,
+    LastName,
+    DOB,
+    DOD,
+    Sex,
+    Race,
+    Ethnicity,
+    SpokenLanguage,
+    BHHShortName,
+    BHHLongName,
+    BHHEffectiveDate,
+    EnrollmentDate.x,
+    DisenrollmentDate.x
+  )
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = GM_ALLAZ_Addresses,
+        by = "PrimaryId",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge$Age <- interval(AllianceEnrolledMembers_Merge$DOB, Sys.Date()) %/% years(1)
+
+AllianceEnrolledMembers_Merge <- 
+  AllianceEnrolledMembers_Merge |> 
+  select(
+    PrimaryId,
+    AhcccsId,
+    FirstName,
+    LastName,
+    DOB,
+    Age,
+    DOD,
+    Sex,
+    Race,
+    Ethnicity,
+    SpokenLanguage,
+    BHHShortName,
+    BHHLongName,
+    BHHEffectiveDate,
+    EnrollmentDate.x,
+    DisenrollmentDate.x,
+    ResAddr1,
+    ResAddr2,
+    ResCity,
+    ResState,
+    ResZipCode,
+    ResCountyName,
+    HomePhone,
+    EmergencyPhone,
+    EmailAddress
+)
+# Trim extra spaces at end of rescountyname
+
+AllianceEnrolledMembers_Merge$ResCountyName <-
+  trimws(AllianceEnrolledMembers_Merge$ResCountyName)
+
+# Filter for The Alliance Providers and the Northern Counties
+
+AllianceEnrolledMembers <-
+  AllianceEnrolledMembers_Merge |> 
+  filter(BHHShortName %in% Provider_ShortName)
+
+AllianceEnrolledMembers <-
+  AllianceEnrolledMembers |> 
+  filter(ResCountyName %in% NAZ_Counties)
+
+# Filter out dead people (no offense intended)
+
+ActiveNAZMmbrshp <-
+  AllianceEnrolledMembers |> 
+  filter(is.na(DOD)) |> 
+  filter(is.na(DisenrollmentDate.x))
+ 
+ActiveNAZMmbrshp <- ActiveNAZMmbrshp |> 
+  rename(
+    "EnrollmentDate" = EnrollmentDate.x,
+    "DisenrollmentDate" = DisenrollmentDate.x,
+    "Address1" = ResAddr1,
+    "Address2" = ResAddr2,
+    "City" = ResCity,
+    "State" = ResState,
+    "ZipCode" = ResZipCode,
+    "County" = ResCountyName
+  )
+
+# Export Active NAZ Membership to csv, update date to date of Progress Report
+# write.csv(ActiveNAZMmbrshp, "./data/output/2023-08-25_ActiveNAZMembership.csv")
+
+```
+
+The Alliance serves `r ActiveNAZMmbrshp |> nrow()` people, as of `r Members_Report_Date`.
+
+### Membership by County
+:::: {.columns}
+::: {.column}
+```{r}
+#| label: CountyDistribution
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+CountyDistribution <- ActiveNAZMmbrshp |> 
+  select(County) |> 
+  count(County) |> 
+  rename(Members = n) |> 
+  mutate(Percent = (Members / (sum(Members)))) 
+
+# Export the table as a csv for reference, Date is date of progress report
+write.csv(CountyDistribution, "./data/output/2023-08-25_CountyDistribution.csv")
+
+# Create objects for inline code
+max_cnty_percent <- max(CountyDistribution$Percent)
+max_cnty_name <- CountyDistribution$County[CountyDistribution$Percent == max_cnty_percent]
+
+min_cnty_percent <- min(CountyDistribution$Percent)
+min_cnty_name <- CountyDistribution$County[CountyDistribution$Percent == min_cnty_percent]
+```
+
+There are no significant changes in the balance of members across the Northern Region) since the last reporting period. `r max_cnty_name` is the most densely populated, accounting for nearly `r max_cnty_percent` of the membership. Conversely, `r min_cnty_name` is the least densely populated, accounting for `r min_cnty_percent` of the membership. The figures below further outline the geographical distribution of the Alliance ACO membership.
+:::
+
+:::{.column}
+```{r}
+#| label: Graphic_CountyDistribution_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+Tab_CountyDistribution <- CountyDistribution |> 
+  gt() |>
+  tab_header(
+    title = md("**Member Distribution by County**"),
+    subtitle = Members_Report_Date #date is date of global members extract
+  ) |> 
+  opt_align_table_header(align = "left") |> 
+  fmt_number(Members,
+             rows = everything(),
+             decimals = 0,
+             sep_mark = ",") |> 
+  fmt_percent(Percent,
+              rows = everything(),
+              decimals = 2,
+              incl_space = TRUE) |> 
+  # cols_width(County ~ px(220),
+  #            Members ~ px(100),
+  #            Percent ~ px(100)) |> 
+  tab_source_note(source_note = md("*SOURCE: BCBSAZ Global Members*")) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3) 
+
+# Create output files for graphics 
+
+# Report Output
+gtsave(Tab_CountyDistribution, filename = "./data/output/2023-08-25_Tab_CountyDistribution.png")
+gtsave(Tab_CountyDistribution, filename = "./data/output/2023-08-25_Tab_CountyDistribution.png")
+
+# Dashboard
+gtsave(Tab_CountyDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_CountyDistribution.png")
+gtsave(Tab_CountyDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_CountyDistribution.png")
+
+Tab_CountyDistribution
+```
+:::
+::::
+
+### Gender and Age
+:::: {.columns}
+::: {.column}
+```{r}
+#| label: GenderDistribution
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Gender distribution table
+Tab_Gender <- ActiveNAZMmbrshp |> 
+  mutate(Sex = case_when(
+    Sex == "M" ~ "Male",
+    Sex == "F" ~ "Female"
+  )) |> 
+  count(Sex) |> 
+  rename(Members = n) |> 
+  mutate(Percent = (Members / (sum(Members)))) 
+# Export the table as a csv for reference, Date is date of progress report
+write.csv(Tab_Gender, "./data/output/2023-08-25_Tab_Gender.csv")
+```
+
+The Alliance serves adults and children aged 6 and older. Distribution of gender is balanced, with Male accounting for `r Tab_Gender |> filter(Sex == "Male") |> select(Percent)`, and Female accounting for `r Tab_Gender |> filter(Sex == "Female") |> select(Percent)`. There is no change over last month.
+:::
+
+::: {.column}
+```{r}
+#| label: Graphic_GenderDistribution_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+Tab_GenderDistribution <- Tab_Gender |> 
+gt() |>
+  tab_header(
+    title = md("**Member Distribution by Sex**"),
+    subtitle = md("As of May 1, 2023")
+  ) |> 
+  opt_align_table_header(align = "left") |> 
+  fmt_number(Members,
+             rows = everything(),
+             decimals = 0,
+             sep_mark = ",") |> 
+  fmt_percent(Percent,
+              rows = everything(),
+              decimals = 2,
+              incl_space = TRUE) |> 
+  # cols_width(Sex ~ px(125),
+  #            Members ~ px(125),
+  #            Percent ~ px(125)) |> 
+  tab_source_note(source_note = md("*SOURCE: BCBSAZ Global Members, extracted 07-26-2023*")) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3) 
+      
+# Creates graphics
+
+# Report Output
+gtsave(Tab_GenderDistribution, filename = "./data/output/2023-08-25_Tab_GenderDistribution.png")
+gtsave(Tab_GenderDistribution, filename = "./data/output/2023-08-25_Tab_GenderDistribution.png")
+
+# Dashboard
+gtsave(Tab_GenderDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_GenderDistribution.png")
+gtsave(Tab_GenderDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_GenderDistribution.png")
+
+Tab_GenderDistribution
+```
+:::
+::::
+
+:::{.callout-warning}
+
+## The figure below demonstrates age distributions of Alliance ACO members
+
+## Important
+The figure below demonstrates age distributions of Alliance ACO members.
+
+
+```{r}
+#| label: SexByAgeGroup
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+
+
+# Create the table for the Population Pyramid
+DemoTable_SexByAgeGroup <- ActiveNAZMmbrshp |> 
+  select(Age, Sex) |> 
+  mutate(`00 - 05` = case_when(
+    Age > 00 & Age <= 5 ~ "1", TRUE ~ "0")) |>
+  mutate(`06 - 12` = case_when(
+    Age > 06 & Age <= 12 ~ "1", TRUE ~ "0")) |> 
+  mutate(`13 - 17` = case_when(
+    Age > 13 & Age <= 17 ~ "1", TRUE ~ "0")) |> 
+  mutate(`18 - 34` = case_when(
+    Age > 18 & Age <= 34 ~ "1", TRUE ~ "0")) |> 
+  mutate(`35 - 64` = case_when(
+    Age > 35 & Age <= 64 ~ "1", TRUE ~ "0")) |> 
+  mutate(`65 - 99` = case_when(
+    Age > 65  ~ "1", TRUE ~ "0")) |> 
+  subset(select = -Age) |> 
+  #covert to dbl
+  mutate(`00 - 05` = as.numeric(`00 - 05`)) |>  
+  mutate(`06 - 12` = as.numeric(`06 - 12`)) |> 
+  mutate(`13 - 17` = as.numeric(`13 - 17`)) |> 
+  mutate(`18 - 34` = as.numeric(`18 - 34`)) |> 
+  mutate(`35 - 64` = as.numeric(`35 - 64`)) |> 
+  mutate(`65 - 99` = as.numeric(`65 - 99`)) |> 
+  #Group by sex and summarize
+  group_by(Sex) |> 
+  summarise_if(is.numeric, sum, na.rm = TRUE) |> 
+  pivot_longer(!Sex, 
+               names_to = "Age_Group",
+               values_to = "n") |> 
+  # Change "M" "F" to "Male" "Female"
+  mutate(Sex = case_when(
+    Sex == "M" ~ "Male",
+    Sex == "F" ~ "Female"
+  )) |> 
+  filter(!is.na(Sex)) |> 
+  #change male to negative so it flips sides of the axis on a shared facet plot
+  mutate(n = ifelse(Sex == "Male", n * -1, n)) |> 
+  #change male female to factor
+  mutate(sex = factor(Sex, levels = c("Male","Female")))
+
+# Export the table as a csv for reference, Date is date of progress report
+write.csv(DemoTable_SexByAgeGroup, "./data/output/2023-08-25_DemoTable_SexByAgeGroup.csv")
+
+
+```
+
+```{r}
+#| label: Graphic_SexByAgeGroup_Pyramid
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+#Make the pyramid plot
+Fig_PopPyramid <- ggplot(DemoTable_SexByAgeGroup, aes(y = Age_Group, x = n, fill = sex)) +
+   geom_bar(stat = "identity") +
+   geom_text(aes(label = abs(n), 
+                 hjust = ifelse(
+                   sex == "Female", -.3, 1.3)),
+                 size = 3) +
+   scale_fill_manual(values = c(Female = "#31688E", Male = "#440154"), drop = FALSE) +
+   facet_wrap(~sex, scales = "free") +
+   facetted_pos_scales(
+     x = list(
+     scale_x_continuous(
+       labels = abs, expand = c(0, 2500, 0, 0),
+       limits = c(-20000, 0)),
+     scale_x_continuous(
+       expand = c(0, 0, 0, 2500),
+       limits = c(0, 20000))),
+     y = list(
+       scale_y_discrete(position = "right"),
+       scale_y_discrete(labels = NULL))) +
+  labs(
+    x = NULL, 
+    y = NULL, 
+    fill = "Member Sex",
+    title = "Alliance Membership by Gender and Age Group",
+    subtitle = Members_Report_Date,
+    caption = "Source: BCBSAZ Global Members, Extracted 2023-08-25") +
+  theme_classic() +
+  theme(
+    axis.text.y.right = element_text(
+      margin = margin(0, 2.2, 0, 2.2)),
+    legend.position = "bottom", 
+    legend.justification = "center",
+    panel.spacing.x = unit(0, "pt"))
+
+## Create Graphics
+# Set the file path and name for saving the .png file
+Report <- "./data/output/"
+Report_Filename <- "2023-08-25_Fig_PopPyramid.png"
+
+Dashboard <- "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/"
+Dashboard_FileName1 <- "2023-08-25_Fig_PopPyramid.png"
+Dashboard_FileName2 <- "Fig_PopPyramid.png"
+
+# Save the ggplot as a .png file
+# Report
+ggsave(file.path(Report, Report_Filename), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+
+#Dashboard
+ggsave(file.path(Dashboard, Dashboard_FileName1), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+ggsave(file.path(Dashboard, Dashboard_FileName2), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+
+Fig_PopPyramid
+
+```
+:::
+
+## Alliance Membership Allocation Information
+
+Alliance Providers are assigned members at the beginning of each contract year. The Alliance supports member voice and choice, and as such provider assignment changes throughout the year in accordance with changing member needs and new enrollments. The following table describes the assignment by provider at the beginning of the contract year, and the current health plan auto-assignment by provider at the time of this reporting.
+
+The ***Alliance Allocation*** represents the number of members for whom the providers are incentivised through the ACO. The ***BCBSAZ Auto Assignment*** represents the population of members for whose care the providers are responsible, and for whom they are measured.
+
+As the COVID19 pandemic public health emergency (PHE), and the resulting restrictions on disenrollment of Medicaid recipients, is ended, we will monitor the rates of enrollment. It is estimated that 37,000 enrolled BCBSAZ members will lose coverage when the PHE ends. It is unknown how many of those will be Alliance members.
+
+```{r}
+#| label: AllianceAllocation
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Wrangle contract allocation table for comparison
+Alliance_AllocationTable <- AllianceProvAllocation |>
+  filter(Provider_ShortName != "EHS") |> 
+  rename(AllianceAllocation = `Annual Member Months`) |> 
+  rename(Provider_ShortName = Provider) |> 
+  mutate(Provider_ShortName = if_else((
+            Provider_ShortName == "Spectrum"), 
+            "SHG", 
+            Provider_ShortName)# the short name for spectrum varies depending on data source
+         ) |> 
+  mutate(Provider_ShortName = if_else((
+            Provider_ShortName == "WYGC"), 
+            "PH", 
+            Provider_ShortName)# the short name for spectrum varies depending on data source
+         ) |> 
+  mutate(Provider_ShortName = if_else((
+            Provider_ShortName == "SBH"), 
+            "SBHS", 
+            Provider_ShortName)# the short name for spectrum varies depending on data source
+         )
+
+# Export to CSV file
+write.csv(Alliance_AllocationTable, "./data/output/2022-10-01_AllianceAllocationTable.csv")
+
+# Using ActiveNAZMembership Wrangle BCBASAZ Auto Enrolled to filter and count members for Alliance Providers
+HCA_AutoEnrolled <- ActiveNAZMmbrshp |> 
+  filter(BHHShortName != "EHS") |> 
+  count(BHHShortName) |>
+  rename(HCA_Enrollment = n)
+
+# Export to CSV file, date is date of global members extract, date is first day of month data was pulled
+write.csv(HCA_AutoEnrolled, "./data/output/2022-06-13_HCA_AutoEnrolled.csv")
+
+Alliance_AllocationTable <-
+  Alliance_AllocationTable |> 
+  rename("BHHShortName" = Provider_ShortName)
+
+# Create a table comparing auto-enrollment with contract allocation
+# This is a Transparency Table for All Alliance Providers
+ContractAlloc_v_Assignment <- 
+  merge(x = Alliance_AllocationTable, #NARBHA Contract Allocation
+        y = HCA_AutoEnrolled, #HCA GlobalMembers Allocation
+        by ="BHHShortName") |> 
+  mutate(PercentDifference = percent(
+    ((HCA_Enrollment-AllianceAllocation)/AllianceAllocation))) |> 
+  mutate(PercentOfMembership = percent(
+    AllianceAllocation/(sum(AllianceAllocation))))
+
+# Export the Alloc_v_Assignment table as a csv for reference, date is date of Progress Report
+write.csv(ContractAlloc_v_Assignment, "./data/output/2023-08-25_ContractAlloc_v_Assignment.csv")
+
+```
+
+```{r}
+#| label: Graphic_AllianceAllocation_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+Tab_Alloc_v_Assignment <- ContractAlloc_v_Assignment |> 
+  gt() |> 
+    tab_header(
+      title = md("Alliance Provider Member Allocation"),
+      subtitle = Members_Report_Date
+      ) |> 
+    fmt_number(c(AllianceAllocation, 
+               HCA_Enrollment),
+             rows = everything(),
+             decimals = 0,
+             sep_mark = ",") |>
+    opt_align_table_header(align = "left") |> 
+    tab_source_note(
+        source_note = md("*Alliance Allocation based on Contract Year 2022-2023*")
+        ) |> 
+    # cols_width(Provider_ShortName ~ px(100),
+    #           AllianceAllocation ~ px(115),
+    #           HCA_Enrollment ~ px(115),
+    #           PercentOfMembership ~ px(115),
+    #          PercentDifference ~ px(115)) |> 
+    cols_label(BHHShortName = "Provider",
+              AllianceAllocation = "Alliance Allocation",
+              HCA_Enrollment = "BCBSAZ Auto Assignment",
+              PercentOfMembership = "Percent of Membership",
+             PercentDifference = "Percent Difference") |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3) 
+
+# Creates graphics
+
+# Report Output
+gtsave(Tab_Alloc_v_Assignment, filename = "./data/output/2023-08-25_Tab_Alloc_v_Assignment.png")
+gtsave(Tab_Alloc_v_Assignment, filename = "./data/output/2023-08-25_Tab_Alloc_v_Assignment.png")
+
+# Dashboard
+gtsave(Tab_Alloc_v_Assignment, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_Alloc_v_Assignment.png")
+gtsave(Tab_Alloc_v_Assignment, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Alloc_v_Assignment.png")
+
+Tab_Alloc_v_Assignment
+```
+
+# Performance Measurement
+
+## HEDIS Measures
+
+The goal of the Alliance is to improve the Effectiveness of Care in the ACO community. WE focus on the following three domains; Follow Up after Hospitalization (FUH), Anti-depressant Medication Management (AMM), and Use of Opioids at High Dosage (HDO).
+
+## NCQA Performance Measures, HEDIS My2023
+```{r}
+#| label: Graphic_HEDISMeasures_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+Domain <- c("Behavioral Health", "Behavioral Health","Behavioral Health", "Overuse/Approrpiateness")
+Measure <- c("Antidepressant Medication (AMM), Effective Acute Phase Treatment",
+             "Follow-Up After Hospitalization for Mental Illness (FUH), 
+             Follow-Up Within 7 Days Post-Discharge",
+             "Follow-Up After Emergency Department Visit for Mental Illness (FUM). Not required by Contract",
+             "Use of Opioids at High Dosage (HDO)")
+NCQA_Mean <- c(.5729, .3936, .400, .9300)
+
+AllianceMeasures_DF <- data.frame(Domain, Measure, NCQA_Mean)
+
+AllianceMeasures_DF |> 
+  gt() |> 
+  tab_header(
+      title = md("Alliance Performance Measures (NCQA)"),
+      subtitle = Members_Report_Date
+      ) |> 
+  fmt_percent(c(NCQA_Mean),
+             rows = everything(),
+             decimals = 2,
+             sep_mark = ",") |>
+  opt_align_table_header(align = "left") |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3) 
+```
+
+## Provider Performance
+
+### All Alliance Performance
+
+In order to report performance of the dependent variable, the Alliance Progress Report utilizes the VBP Validation Model [^1] data set. The monthly table *VBPQR_AllApsCombined_Cleaned_complete* is imported and transformed to summarize the aggregation for the individual providers and the entire Alliance ACO network.
+
+[^1]: Kivela, John Ryan. (2023). Value Based Purchasing Validation Model. The Alliance ACO.
+
+```{r}
+#| label: VBPCompliance_AllMeasures
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# 5/4/23 - Major updates to code because HCA changed the format of the VBP QR report. 
+# This process tarts with "VBP_Rep_Comb_validation_complete.csv" from the VBP Validation model
+
+# Make the compliance/performance table. This is a summary table from the aggregated VBPQR. 
+# This is a transparency table that is available to Alliance Providers for their own assessment.
+Tab_PercentCompliant <- VBP_Rep_Comb_validation_complete |> 
+  mutate(Compliant = if_else(`Gap Status` == "OPEN", 0, 1)) |> 
+  mutate(TotalEligible = if_else(`Gap Status` != 0, 1, 0)) |> 
+  rename("AdaptedCompliant" = Compliant) |> 
+  # mutate(AdaptedCompliant = if_else((`SubMeasure ID` == "AMM" & Compliant == 0), 0, 
+  #                 if_else((`SubMeasure ID` == "AMM" & Compliant == 1), 1,
+  #                          if_else((`SubMeasure ID` == "FUH" & Compliant == 0), 0, 
+  #                                  if_else((`SubMeasure ID` == "FUH" & Compliant == 1), 1,
+  #                                          if_else((`SubMeasure ID` == "FUM" & Compliant == 0), 0, 
+  #                                                 if_else((`SubMeasure ID` == "FUM" & Compliant == 1), 1,
+  #                                                         if_else((`SubMeasure ID` == "HDO" & Compliant == 0), 1, 
+  #                                                               if_else((`SubMeasure ID` == "HDO" & Compliant == 1), 0, NA
+  #                                                          
+  #        ))))))))) |> 
+  #filter(`SubMeasure ID` %in% c("AMM","FUH", "HDO")) |> 
+  mutate(SumTotalEligible = sum(TotalEligible)) |> 
+  group_by(Provider_ShortName, `Health Home TIN & Name`, `SubMeasure ID`) |> 
+  summarize(AdaptedCompliant = sum(AdaptedCompliant),
+            TotalEligible = sum(TotalEligible)) |> 
+  mutate(AdaptedNCQAMean = ifelse(`SubMeasure ID` == "AMM", .5729,
+                                     ifelse(`SubMeasure ID` == "FUH", .3936, 
+                                            ifelse(`SubMeasure ID` == "FUM", .401,
+                                                  ifelse(`SubMeasure ID` == "HDO", .9300,
+                                                        ifelse(`SubMeasure ID` == "PCR", .100, NA
+                                     )))))) |>   
+  mutate(PercentCompliant = as.numeric (AdaptedCompliant/TotalEligible)) |> 
+  mutate(PerformanceLevel = (PercentCompliant - AdaptedNCQAMean))
+
+# Export the table as a csv for reference, date is date of progress report
+write.csv(Tab_PercentCompliant, "./data/output/2023-08-25_Tab_PercentCompliant.csv")
+
+
+# Calculate performance levels for All Alliance Performance Table/Figure
+# This is the core table for network-wide statistics
+# This is a Transparency Table for all Alliance Providers
+AllAlliancePerformance <- Tab_PercentCompliant |> 
+  rename(SubMeasureID = `SubMeasure ID`) |> 
+  group_by(SubMeasureID) |> 
+  summarise(Sum_AdaptedCompliant = sum(AdaptedCompliant, na.rm = FALSE),
+            Sum_TotalEligible = sum(TotalEligible, na.rm = FALSE)) |> 
+  mutate(Percent_Compliant = Sum_AdaptedCompliant/Sum_TotalEligible) |>
+  mutate(NCQA_Mean = NCQA_MeanList) |> 
+  mutate(PerformanceLevel = (Percent_Compliant - NCQA_Mean))
+
+# Export the table as a csv for reference, Date is date of progress report
+write.csv(AllAlliancePerformance, "./data/output/2023-05-31_Tab_AllAlliancePerformance.csv")
+```
+
+```{r}
+#| label: Graphic_AllProviderPerformance_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+#All Alliance performance table
+Tab_AllProvPerformance <- AllAlliancePerformance |> 
+gt() |> 
+  tab_header(
+    title = md("Overall Performance of Alliance Provider Network"),
+    subtitle = "Report as of 2023-08-25"
+  ) |> 
+  fmt_percent(columns = c("Percent_Compliant", "NCQA_Mean"), 
+            decimals = 2,
+            force_sign = FALSE) |> 
+  fmt_percent(columns = c("PerformanceLevel"), 
+              decimals = 2,
+              force_sign = TRUE) |> 
+  opt_align_table_header(align = "left") |> 
+  cols_label(SubMeasureID = "NCQA Measure",
+             Sum_AdaptedCompliant = "Compliant",
+             Sum_TotalEligible = "Eligible",
+             Percent_Compliant = "Percent Compliant",
+             NCQA_Mean = "NCQA Mean",
+             PerformanceLevel = "Performance Level"
+             ) |>
+   # cols_width(SubMeasureID ~ px(110),
+   #           Sum_AdaptedCompliant ~ px(110),
+   #           Sum_TotalEligible ~ px(110),
+   #           Percent_Compliant ~ px(110),
+   #           NCQA_Mean ~ px(110),
+   #           PerformanceLevel ~ px(120)
+   #           ) |>
+  tab_source_note(
+    source_note = md("*SOURCE: BCBSAZ VBP Performance Reports, Claims Adjudicated Through 2023-06-30* </br> *FUM not required by contract*")
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3)
+
+# Creates graphics
+
+# Report Output
+gtsave(Tab_AllProvPerformance, filename = "./data/output/2023-08-25_Tab_AllProvPerformance.png")
+gtsave(Tab_AllProvPerformance, filename = "./data/output/2023-08-25_Tab_AllProvPerformance.png")
+
+# Dashboard
+gtsave(Tab_AllProvPerformance, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_AllProvPerformance.png")
+gtsave(Tab_AllProvPerformance, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_AllProvPerformance.png")
+
+Tab_AllProvPerformance
+
+```
+
+**Alliance Performance Levels**
+
+-   AMM: The overall performance score for AMM was `r AllAlliancePerformance |> filter(SubMeasureID == "AMM") |> select(Percent_Compliant)` (`r AllAlliancePerformance |> filter(SubMeasureID == "AMM") |> select(PerformanceLevel)`)
+
+-   FUH: The overall performance score for FUH was `r AllAlliancePerformance |> filter(SubMeasureID == "FUH") |> select(Percent_Compliant)`(`r AllAlliancePerformance |> filter(SubMeasureID == "FUH") |> select(PerformanceLevel)`)
+
+-   HDO: The overall score for HDO was `r AllAlliancePerformance |> filter(SubMeasureID == "HDO") |> select(Percent_Compliant)`(`r AllAlliancePerformance |> filter(SubMeasureID == "HDO") |> select(PerformanceLevel)`)
+
+## Important
+The figure below demonstrates The Alliance performance scores.
+
+```{r}
+#| label: Graphic_AllProviderPerformanceLollipop
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Target Measure Lollipop, most recent report
+# Lollipop Chart
+
+# Update the Tab_PercentCompliant table for the lollipop figure
+# Tab_AllProvLollipop <- Tab_PercentCompliant |> 
+#   group_by(`SubMeasure ID`) |> 
+#   mutate(SumTotalEligible = sum(TotalEligible)) |> 
+#   mutate(PercentTotalEligible = TotalEligible/SumTotalEligible)
+# 
+# write.csv(Tab_AllProvLollipop, "./data/output/2023-08-25_Tab_AllProviderLollipop.csv")
+# 
+# write.csv(Tab_AllProvLollipop,"C:/Users/RyanK/OneDrive - The NARBHA Institute/Documents - Data Force/Projects/AllianceIntranetSupport/data/Tab_AllProviderLollipop.csv")
+# 
+# #make the lollipops
+# Fig_AllProvLollipop <- Tab_AllProvLollipop |> 
+#   ggplot(aes(x = Provider_Shortname, 
+#              y = PercentCompliant
+#              )) +
+#   geom_line(aes(y = AdaptedNCQAMean,
+#                 group = `SubMeasure ID`),
+#                 color = "#31688E",
+#             size = 4
+#             ) +
+#   geom_segment(aes(xend = Provider_Shortname,
+#                    y = 0,
+#                    yend = PercentCompliant),
+#                    color = "#440154"
+#                )+
+#   geom_point(aes(y = PercentCompliant,
+#                  size = PercentTotalEligible
+#                 ,
+#                 colour = "#5b3493")
+#              )+
+#   facet_grid(cols = vars(`SubMeasure ID`)
+#              )+
+#   theme_bw()+
+#   theme(legend.position = "none",
+#         axis.text.x = element_text(
+#           angle = 65, 
+#           hjust=1),
+#         axis.title.x = element_blank(),
+#         axis.line = element_blank(),
+#         strip.background = element_rect(
+#           fill = "#7069be"),
+#         strip.text.x = element_text(size = 12, 
+#                                     color = "#FFFFFF",
+#                                     face = "bold"))+
+#   #scale_y_continuous(labels = scales::percent)+
+#  # ylim(c(0,1))+
+#   labs(title = "Alliance Provider Target Measure Compliance",
+#        subtitle = "With Percent of Total Eligible Participants",
+#        caption = "Data source: BCBSAZ VBP Report, Claims Adjudicated Through 2023-06-30")
+#        
+# ## Create Graphics
+# # Set the file path and name for saving the .png file
+# Report <- "./data/output/"
+# Report_Filename <- "2023-08-25_Fig_AllProvLollipop.png"
+# 
+# Dashboard <- "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/"
+# Dashboard_FileName1 <- "2023-08-25_Fig_AllProvLollipop.png"
+# Dashboard_FileName2 <- "Fig_AllProvLollipop.png"
+# 
+# # Save the ggplot as a .png file
+# # Report
+# ggsave(file.path(Report, Report_Filename), plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+# 
+# # Dashboard
+# ggsave(file.path(Dashboard, Dashboard_FileName1), plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+# ggsave(file.path(Dashboard, Dashboard_FileName2), plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+# 
+# Fig_AllProvLollipop
+```
+
+```{r}
+library(ggplot2)
+
+# Assuming Tab_PercentCompliant is already defined
+
+# Calculate PercentTotalEligible
+Tab_AllProvLollipop <- Tab_PercentCompliant %>%
+  group_by(`SubMeasure ID`) %>%
+  mutate(PercentTotalEligible = TotalEligible / sum(TotalEligible))
+
+# Write Tab_AllProvLollipop to CSV
+write.csv(Tab_AllProvLollipop, file = "./data/output/2023-08-25_Tab_AllProviderLollipop.csv")
+
+# Create the lollipop plot
+Fig_AllProvLollipop <- ggplot(Tab_AllProvLollipop, aes(x = Provider_ShortName, y = PercentCompliant)) +
+  geom_line(aes(y = AdaptedNCQAMean, group = `SubMeasure ID`), color = "#35B779", size = 2) +
+  geom_segment(aes(xend = Provider_ShortName, y = 0, yend = PercentCompliant), color = "#440154") +
+  geom_point(fill = "#440154", color = "#440154", size = 3.5) + # Set both fill and color to "#440154"
+  facet_grid(cols = vars(`SubMeasure ID`)) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 65, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.line = element_blank(),
+        strip.background = element_rect(fill = "#440154"),
+        strip.text.x = element_text(size = 12, color = "white", face = "bold")) +
+  labs(title = "Alliance Provider Target Measure Compliance",
+       subtitle = "With Percent of Total Eligible Participants",
+       caption = "Data source: BCBSAZ VBP Report, Claims Adjudicated Through 2023-06-30")
+
+# Save the ggplot as a .png file
+ggsave(file = "./data/output/2023-08-25_Fig_AllProvLollipop.png", plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+
+# Save the ggplot for the dashboard
+Dashboard <- "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/"
+Dashboard_FileName <- "Fig_AllProvLollipop.png"
+ggsave(file.path(Dashboard, Dashboard_FileName), plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+
+Fig_AllProvLollipop
+
+
+```
+
+### A Closer Look
+
+#### AMM
+
+```{r}
+#| label: IndividualMeasurePerformance_AMM2
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Calculate performance levels
+# AMM2
+IndivAlliancePerformance_AMM2 <- Tab_PercentCompliant |> 
+  filter(`SubMeasure ID` == "AMM") |> 
+  select(Provider_ShortName,
+         TotalEligible,
+         AdaptedCompliant,
+         PercentCompliant,
+         PerformanceLevel)
+
+# Export the table as a csv for reference, date is date of progress report
+
+write.csv(IndivAlliancePerformance_AMM2, "./data/output/2023-08-25_IndivAlliancePerformance_AMM2.csv")
+```
+
+```{r}
+#| label: Graphic_IndividualMeasurePerformance_AMM2_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+#All Alliance performance table
+Tab_IndivAlliancePerformance_AMM2 <- 
+IndivAlliancePerformance_AMM2 [ , -1 ] |> 
+  group_by("Provider_ShortName") |> 
+gt() |> 
+  tab_header(
+    title = "Performance of Alliance Provider Network (AMM)",
+    subtitle = c(Reportasof, "NCQA Mean = 57.29%")
+  ) |> 
+  # fmt_percent(columns = c("Percent_Compliant", "NCQA_Mean"), 
+  #           decimals = 2,
+  #           force_sign = FALSE) |> 
+  fmt_percent(columns = c("PerformanceLevel"), 
+              decimals = 2,
+              force_sign = TRUE) |>
+  fmt_percent(columns = c("PercentCompliant"), 
+              decimals = 2,
+              force_sign = FALSE) |> 
+  opt_align_table_header(align = "left") |> 
+  cols_label(
+             Provider_ShortName = "Provider",
+             AdaptedCompliant = "Compliant",
+             TotalEligible = "Eligible",
+             PercentCompliant = "Percent Compliant",
+             PerformanceLevel = "Performance Level"
+             ) |>
+   # cols_width(
+   #           # SubMeasureID ~ px(110),
+   #           AdaptedCompliant ~ px(110),
+   #           TotalEligible ~ px(110),
+   #           PercentCompliant ~ px(110),
+   #           # NCQA_Mean ~ px(110),
+   #           PerformanceLevel ~ px(120)
+   #           ) |>
+  tab_source_note(
+    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-06-30*")
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3)
+
+# Creates graphics
+
+# Report Output
+gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
+gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
+
+# Dashboard
+gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
+gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_AMM2.png")
+
+Tab_IndivAlliancePerformance_AMM2
+
+
+```
+
+#### FUH
+
+```{r}
+#| label: IndividualMeasurePerformance_FUH7
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Calculate performance levels
+# FUH
+IndivAlliancePerformance_FUH7 <- Tab_PercentCompliant |> 
+  filter(`SubMeasure ID` == "FUH") |> 
+  select(Provider_ShortName,
+         TotalEligible,
+         AdaptedCompliant,
+         PercentCompliant,
+         PerformanceLevel)
+
+# Export the table as a csv for reference, date is date of progress report
+
+write.csv(IndivAlliancePerformance_FUH7, "./data/output/2023-08-25_IndivAlliancePerformance_FUH7.csv")
+```
+
+```{r}
+#| label: Graphic_IndividualMeasurePerformance_FUH7_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+#All Alliance performance table
+
+Tab_IndivAlliancePerformance_FUH7 <- 
+IndivAlliancePerformance_FUH7 [ , -1 ] |> 
+  group_by("Provider_ShortName") |> 
+gt() |> 
+  tab_header(
+    title = "Performance of Alliance Provider Network (FUH)",
+    subtitle = c(Reportasof, "NCQA Mean = 39.36%")
+  ) |> 
+  # fmt_percent(columns = c("Percent_Compliant", "NCQA_Mean"), 
+  #           decimals = 2,
+  #           force_sign = FALSE) |> 
+  fmt_percent(columns = c("PerformanceLevel"), 
+              decimals = 2,
+              force_sign = TRUE) |>
+  fmt_percent(columns = c("PercentCompliant"), 
+              decimals = 2,
+              force_sign = FALSE) |> 
+  opt_align_table_header(align = "left") |> 
+  cols_label(
+             Provider_ShortName = "Provider",
+             AdaptedCompliant = "Compliant",
+             TotalEligible = "Eligible",
+             PercentCompliant = "Percent Compliant",
+             PerformanceLevel = "Performance Level"
+             ) |>
+   # cols_width(
+   #           # SubMeasureID ~ px(110),
+   #           AdaptedCompliant ~ px(110),
+   #           TotalEligible ~ px(110),
+   #           PercentCompliant ~ px(110),
+   #           # NCQA_Mean ~ px(110),
+   #           PerformanceLevel ~ px(120)
+   #           ) |>
+  tab_source_note(
+    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-06-30*")
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3)
+
+# Report Output
+gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
+gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
+
+# Dashboard
+gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
+gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_FUH7.png")
+
+Tab_IndivAlliancePerformance_FUH7
+```
+
+#### HDO
+
+```{r}
+#| label: IndividualMeasurePerformance_HDO
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+# Calculate performance levels
+# HDO
+IndivAlliancePerformance_HDO <- Tab_PercentCompliant |> 
+  filter(`SubMeasure ID` == "HDO") |> 
+  select(Provider_ShortName,
+         TotalEligible,
+         AdaptedCompliant,
+         PercentCompliant,
+         PerformanceLevel)
+
+# Export the table as a csv for reference, date is date of progress report
+
+write.csv(IndivAlliancePerformance_HDO, "./data/output/2023-08-25_IndivAlliancePerformance_HDO.csv")
+```
+
+```{r}
+#| label: Graphic_IndividualMeasurePerformance_HDO_Table
+#| include: true
+#| echo: true
+#| warning: false
+#| error: false
+
+#All Alliance performance table
+Tab_IndivAlliancePerformance_HDO <- 
+IndivAlliancePerformance_HDO [ , -1 ] |> 
+  group_by("Provider_ShortName") |> 
+gt() |> 
+  tab_header(
+    title = "Performance of Alliance Provider Network (HDO)",
+    subtitle = c(Reportasof, "NCQA Mean = 93.00%")
+  ) |> 
+  # fmt_percent(columns = c("Percent_Compliant", "NCQA_Mean"), 
+  #           decimals = 2,
+  #           force_sign = FALSE) |> 
+  fmt_percent(columns = c("PerformanceLevel"), 
+              decimals = 2,
+              force_sign = TRUE) |>
+  fmt_percent(columns = c("PercentCompliant"), 
+              decimals = 2,
+              force_sign = FALSE) |> 
+  opt_align_table_header(align = "left") |> 
+  cols_label(
+             Provider_ShortName = "Provider",
+             AdaptedCompliant = "Compliant",
+             TotalEligible = "Eligible",
+             PercentCompliant = "Percent Compliant",
+             PerformanceLevel = "Performance Level"
+             ) |>
+   # cols_width(
+   #           # SubMeasureID ~ px(110),
+   #           AdaptedCompliant ~ px(110),
+   #           TotalEligible ~ px(110),
+   #           PercentCompliant ~ px(110),
+   #           # NCQA_Mean ~ px(110),
+   #           PerformanceLevel ~ px(120)
+   #           ) |>
+  tab_source_note(
+    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-06-30*")
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "#31688E"),
+      cell_text(weight = "bold",
+                color = "white")
+    ),
+    locations = cells_column_labels(
+      columns = everything()
+    )
+  ) |> 
+  opt_horizontal_padding(scale = 3)
+
+# Report Output
+gtsave(Tab_IndivAlliancePerformance_HDO, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
+gtsave(Tab_IndivAlliancePerformance_HDO, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
+
+# Dashboard
+gtsave(Tab_IndivAlliancePerformance_HDO, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
+gtsave(Tab_IndivAlliancePerformance_HDO, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_HDO.png")
+
+Tab_IndivAlliancePerformance_HDO
+```
