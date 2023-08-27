@@ -100,13 +100,13 @@ Overall, Alliance performance improved over the last month, increasing it's leve
 
 The next few code sets queries the HCA data bases to gather data from the Global Members Data base.
 
-## Enrollment Roster
+### Enrollment Roster
 
 ```{sql, connection = QRPTP01, output.var = "GM_Enrollments_AllACC"}
 #| label: AHCCCS Enrollments
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -123,13 +123,13 @@ ORDER BY PrimaryId , EnrollmentDate DESC
 
 ```
 
-## All AZ Enrollments Data
+### All AZ Enrollments Data
 
 ```{sql, connection = QRPTP01, output.var = "GM_ALLAZ_Enrollments"}
 #| label: GM All AZ Enrollments
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -142,13 +142,13 @@ WHERE void = 0
 ORDER BY PrimaryId
 ```
 
-## All AZ Addresses Data
+### All AZ Addresses Data
 
 ```{sql, connection = QRPTP01, output.var = "GM_ALLAZ_Addresses"}
 #| label: GM All AZ Addresses
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -160,13 +160,13 @@ WHERE Void = 0
   
 ```
 
-## Primary Assigned Clinic
+### Primary Assigned Clinic
 
 ```{sql, connection = QRPTP01, output.var = "GM_PrimaryAssignedClinic"}
 #| label: GM Primary Assigned Clinic
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -178,13 +178,13 @@ WHERE Void = 0
   
 ```
 
-## Health Homes ID list
+### Health Homes ID list
 
 ```{sql, connection = QRPTP01, output.var = "GM_HealthHomes"}
 #| label: GM Health Homes
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -196,15 +196,15 @@ WHERE Void = 0
   
 ```
 
-## Demographics
+### Demographics
 
-### Client Demographics
+#### Client Demographics
 
 ```{sql, connection = QRPTP01, output.var = "Clients_Demographics_AllACC"}
 #| label: Client Demograhics
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -221,13 +221,13 @@ ORDER BY LastName DESC
 
 ```
 
-### Dugless Demographics
+#### Dugless Demographics
 
 ```{sql, connection = QRPTP01, output.var = "GM_DUGLess"}
 #| label: GM DugLess
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -239,11 +239,13 @@ WHERE Void = 0
   
 ```
 
+### Final Result
+
 ```{r}
 #| label: Enrollment
 #| eval: true
-#| include: false
-#| echo: false
+#| include: true
+#| echo: true
 #| warning: false
 #| error: false
 
@@ -308,37 +310,13 @@ AllianceEnrolledMembers_Merge <-
 
 AllianceEnrolledMembers_Merge$Age <- interval(AllianceEnrolledMembers_Merge$DOB, Sys.Date()) %/% years(1)
 
-AllianceEnrolledMembers_Merge <- 
-  AllianceEnrolledMembers_Merge |> 
-  select(
-    PrimaryId,
-    AhcccsId,
-    FirstName,
-    LastName,
-    DOB,
-    Age,
-    DOD,
-    Sex,
-    Race,
-    Ethnicity,
-    SpokenLanguage,
-    BHHShortName,
-    BHHLongName,
-    BHHEffectiveDate,
-    EnrollmentDate.x,
-    DisenrollmentDate.x,
-    ResAddr1,
-    ResAddr2,
-    ResCity,
-    ResState,
-    ResZipCode,
-    ResCountyName,
-    HomePhone,
-    EmergencyPhone,
-    EmailAddress
-)
-# Trim extra spaces at end of rescountyname
+AllianceEnrolledMembers_Merge<-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = GM_DUGLess,
+        by = "PrimaryId",
+        all.x = TRUE)
 
+# Trim Extra Characters
 AllianceEnrolledMembers_Merge$ResCountyName <-
   trimws(AllianceEnrolledMembers_Merge$ResCountyName)
 
@@ -359,6 +337,63 @@ ActiveNAZMmbrshp <-
   filter(is.na(DOD)) |> 
   filter(is.na(DisenrollmentDate.x))
  
+
+
+# Add Race Codes
+
+RaceCodes <- read.csv("./data/RaceCodes.csv")
+
+RaceCodes <- 
+  RaceCodes |> 
+  select(
+    HipaaCode,
+    HipaaDescription
+  ) |> 
+  rename(Race = "HipaaCode")
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = RaceCodes,
+        by = "Race",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge <- 
+  AllianceEnrolledMembers_Merge |> 
+  select(-Race)
+
+ActiveNAZMmbrshp <- 
+  AllianceEnrolledMembers_Merge |> 
+  select(
+    PrimaryId,
+    AhcccsId.x,
+    FirstName,
+    LastName,
+    DOB.x,
+    Age,
+    DOD,
+    Sex,
+    HipaaDescription,
+    Ethnicity,
+    SpokenLanguage,
+    MilitaryStatus,
+    EmploymentStatus,
+    BHHShortName,
+    BHHLongName,
+    BHHEffectiveDate,
+    EnrollmentDate.x,
+    DisenrollmentDate.x,
+    ResAddr1,
+    ResAddr2,
+    ResCity,
+    ResState,
+    ResZipCode,
+    ResCountyName,
+    HomePhone,
+    EmergencyPhone,
+    EmailAddress
+)
+# Trim extra spaces at end of rescountyname
+
 ActiveNAZMmbrshp <- ActiveNAZMmbrshp |> 
   rename(
     "EnrollmentDate" = EnrollmentDate.x,
@@ -368,8 +403,17 @@ ActiveNAZMmbrshp <- ActiveNAZMmbrshp |>
     "City" = ResCity,
     "State" = ResState,
     "ZipCode" = ResZipCode,
-    "County" = ResCountyName
+    "County" = ResCountyName,
+    "AHCCCSID" = AhcccsId.x,
+    "DOB" = DOB.x,
+    "Race" = HipaaDescription
   )
+
+ActiveNAZMmbrshp <-
+  ActiveNAZMmbrshp |> 
+  filter(is.na(DisenrollmentDate)) |> 
+  filter(BHHShortName %in% Provider_ShortName) |> 
+  filter(County %in% NAZ_Counties)
 
 # Export Active NAZ Membership to csv, update date to date of Progress Report
 # write.csv(ActiveNAZMmbrshp, "./data/output/2023-08-25_ActiveNAZMembership.csv")
@@ -542,8 +586,6 @@ Tab_GenderDistribution
 :::
 ::::
 
-:::{.callout-warning}
-
 ## The figure below demonstrates age distributions of Alliance ACO members
 
 ## Important
@@ -667,7 +709,6 @@ ggsave(file.path(Dashboard, Dashboard_FileName2), plot = Fig_PopPyramid, width =
 Fig_PopPyramid
 
 ```
-:::
 
 ## Alliance Membership Allocation Information
 
