@@ -100,8 +100,6 @@ Overall, Alliance performance improved over the last month, increasing it's leve
 
 The next few code sets queries the HCA data bases to gather data from the Global Members Data base.
 
-### Enrollment Roster
-
 ```{sql, connection = QRPTP01, output.var = "GM_Enrollments_AllACC"}
 #| label: AHCCCS Enrollments
 #| eval: true
@@ -123,8 +121,6 @@ ORDER BY PrimaryId , EnrollmentDate DESC
 
 ```
 
-### All AZ Enrollments Data
-
 ```{sql, connection = QRPTP01, output.var = "GM_ALLAZ_Enrollments"}
 #| label: GM All AZ Enrollments
 #| eval: true
@@ -142,8 +138,6 @@ WHERE void = 0
 ORDER BY PrimaryId
 ```
 
-### All AZ Addresses Data
-
 ```{sql, connection = QRPTP01, output.var = "GM_ALLAZ_Addresses"}
 #| label: GM All AZ Addresses
 #| eval: true
@@ -159,46 +153,6 @@ FROM GlobalMembers.dbo.DailyMemberShipAllArizonaAddresses
 WHERE Void = 0 
   
 ```
-
-### Primary Assigned Clinic
-
-```{sql, connection = QRPTP01, output.var = "GM_PrimaryAssignedClinic"}
-#| label: GM Primary Assigned Clinic
-#| eval: true
-#| include: true
-#| echo: true
-#| warning: false
-#| error: false
-
-SELECT * 
-
-FROM GlobalMembers.dbo.PrimaryAssignedClinic
-
-WHERE Void = 0 
-  
-```
-
-### Health Homes ID list
-
-```{sql, connection = QRPTP01, output.var = "GM_HealthHomes"}
-#| label: GM Health Homes
-#| eval: true
-#| include: true
-#| echo: true
-#| warning: false
-#| error: false
-
-SELECT * 
-
-FROM GlobalMembers.dbo.HealthHomes
-
-WHERE Void = 0 
-  
-```
-
-### Demographics
-
-#### Client Demographics
 
 ```{sql, connection = QRPTP01, output.var = "Clients_Demographics_AllACC"}
 #| label: Client Demograhics
@@ -221,8 +175,6 @@ ORDER BY LastName DESC
 
 ```
 
-#### Dugless Demographics
-
 ```{sql, connection = QRPTP01, output.var = "GM_DUGLess"}
 #| label: GM DugLess
 #| eval: true
@@ -238,8 +190,6 @@ FROM GlobalMembers.dbo.DUGLessDemographics
 WHERE Void = 0 
   
 ```
-
-### Final Result
 
 ```{r}
 #| label: Enrollment
@@ -302,6 +252,11 @@ AllianceEnrolledMembers_Merge <-
     DisenrollmentDate.x
   )
 
+# Update some BHH SHort Names
+AllianceEnrolledMembers_Merge$BHHShortName <- gsub("SBH", "SBHS", AllianceEnrolledMembers_Merge$BHHShortName)
+AllianceEnrolledMembers_Merge$BHHShortName <- gsub("EHS", "CBI", AllianceEnrolledMembers_Merge$BHHShortName)
+AllianceEnrolledMembers_Merge$BHHShortName <- gsub("WYGC", "PH", AllianceEnrolledMembers_Merge$BHHShortName)
+
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
         y = GM_ALLAZ_Addresses,
@@ -309,6 +264,11 @@ AllianceEnrolledMembers_Merge <-
         all.x = TRUE)
 
 AllianceEnrolledMembers_Merge$Age <- interval(AllianceEnrolledMembers_Merge$DOB, Sys.Date()) %/% years(1)
+
+age_breaks <- c(0, 6, 18, 25, 40, 60, 80, 100)
+age_labels <- c("0 - 6", "7 - 18", "19 - 25", "26 - 40", "41 - 60", "61 - 80", "81 - 100")
+
+AllianceEnrolledMembers_Merge$AgeGroups <- cut(AllianceEnrolledMembers_Merge$Age, breaks = age_breaks, labels = age_labels, right = FALSE)
 
 AllianceEnrolledMembers_Merge<-
   merge(x = AllianceEnrolledMembers_Merge,
@@ -321,7 +281,6 @@ AllianceEnrolledMembers_Merge$ResCountyName <-
   trimws(AllianceEnrolledMembers_Merge$ResCountyName)
 
 # Filter for The Alliance Providers and the Northern Counties
-
 AllianceEnrolledMembers <-
   AllianceEnrolledMembers_Merge |> 
   filter(BHHShortName %in% Provider_ShortName)
@@ -331,13 +290,10 @@ AllianceEnrolledMembers <-
   filter(ResCountyName %in% NAZ_Counties)
 
 # Filter out dead people (no offense intended)
-
 ActiveNAZMmbrshp <-
   AllianceEnrolledMembers |> 
   filter(is.na(DOD)) |> 
   filter(is.na(DisenrollmentDate.x))
- 
-
 
 # Add Race Codes
 RaceCodes <- read.csv("./data/RaceCodes.csv")
@@ -362,7 +318,7 @@ AllianceEnrolledMembers_Merge <-
   select(-Race)
 
 # Add ethnicity
-EthnicityCodes <- read.csv("./data/EthnicityCOdes.csv")
+EthnicityCodes <- read.csv("./data/EthnicityCodes.csv")
 
 EthnicityCodes <-
   EthnicityCodes |> 
@@ -373,6 +329,14 @@ EthnicityCodes <-
   rename(Ethnicity = "Code",
          Ethnicity1 = "Description")
 
+EthnicityCodes <- 
+  EthnicityCodes |> 
+  slice(29:n())
+
+# format as numbers
+EthnicityCodes$Ethnicity <- as.numeric(EthnicityCodes$Ethnicity)
+AllianceEnrolledMembers_Merge$Ethnicity <- as.numeric(AllianceEnrolledMembers_Merge$Ethnicity)
+  
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
         y = EthnicityCodes,
@@ -394,6 +358,12 @@ LanguageCodes <-
   ) |> 
   rename(SpokenLanguage = "shortname",
          SpokenLanguage1 = "name")
+
+# Trim Extra Characters
+LanguageCodes$SpokenLanguage <-
+  trimws(LanguageCodes$SpokenLanguage)
+LanguageCodes$SpokenLanguage1 <-
+  trimws(LanguageCodes$SpokenLanguage1)
 
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
@@ -418,6 +388,9 @@ EmploymentCodes <-
   rename(EmploymentStatus = "Code",
          EmploymentStatus1 = "Description")
 
+EmploymentCodes$EmploymentStatus1 <-
+  trimws(EmploymentCodes$EmploymentStatus1)
+
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
         y = EmploymentCodes,
@@ -441,6 +414,9 @@ MilitaryCodes <-
   rename(MilitaryStatus = "Code",
          MilitaryStatus1 = "Description")
 
+MilitaryCodes$MilitaryStatus <-
+  trimws(MilitaryCodes$MilitaryStatus)
+
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
         y = MilitaryCodes,
@@ -460,6 +436,7 @@ ActiveNAZMmbrshp <-
     LastName,
     DOB.x,
     Age,
+    AgeGroups,
     DOD,
     Sex,
     Race1,
