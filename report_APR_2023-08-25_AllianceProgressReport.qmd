@@ -340,7 +340,6 @@ ActiveNAZMmbrshp <-
 
 
 # Add Race Codes
-
 RaceCodes <- read.csv("./data/RaceCodes.csv")
 
 RaceCodes <- 
@@ -349,7 +348,8 @@ RaceCodes <-
     HipaaCode,
     HipaaDescription
   ) |> 
-  rename(Race = "HipaaCode")
+  rename(Race = "HipaaCode",
+         Race1 = "HipaaDescription")
 
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
@@ -360,6 +360,96 @@ AllianceEnrolledMembers_Merge <-
 AllianceEnrolledMembers_Merge <- 
   AllianceEnrolledMembers_Merge |> 
   select(-Race)
+
+# Add ethnicity
+EthnicityCodes <- read.csv("./data/EthnicityCOdes.csv")
+
+EthnicityCodes <-
+  EthnicityCodes |> 
+  select(
+    Code,
+    Description
+  ) |> 
+  rename(Ethnicity = "Code",
+         Ethnicity1 = "Description")
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = EthnicityCodes,
+        by = "Ethnicity",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
+  select(-Ethnicity)
+
+# Add Spoken Language
+LanguageCodes <- read.csv("./data/LanguageCodes.csv")
+
+LanguageCodes <-
+  LanguageCodes |> 
+  select(
+    shortname,
+    name
+  ) |> 
+  rename(SpokenLanguage = "shortname",
+         SpokenLanguage1 = "name")
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = LanguageCodes,
+        by = "SpokenLanguage",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
+  select(-SpokenLanguage)
+
+# Add employment codes
+
+EmploymentCodes <- read.csv("./data/EmploymentCodes.csv")
+
+EmploymentCodes <-
+  EmploymentCodes |> 
+  select(
+    Code,
+    Description
+  ) |> 
+  rename(EmploymentStatus = "Code",
+         EmploymentStatus1 = "Description")
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = EmploymentCodes,
+        by = "EmploymentStatus",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
+  select(-EmploymentStatus)
+
+# Add military codes
+
+MilitaryCodes <- read.csv("./data/MilitaryCodes.csv")
+
+MilitaryCodes <-
+  MilitaryCodes |> 
+  select(
+    Code,
+    Description
+  ) |> 
+  rename(MilitaryStatus = "Code",
+         MilitaryStatus1 = "Description")
+
+AllianceEnrolledMembers_Merge <-
+  merge(x = AllianceEnrolledMembers_Merge,
+        y = MilitaryCodes,
+        by = "MilitaryStatus",
+        all.x = TRUE)
+
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
+  select(-MilitaryStatus)
 
 ActiveNAZMmbrshp <- 
   AllianceEnrolledMembers_Merge |> 
@@ -372,11 +462,11 @@ ActiveNAZMmbrshp <-
     Age,
     DOD,
     Sex,
-    HipaaDescription,
-    Ethnicity,
-    SpokenLanguage,
-    MilitaryStatus,
-    EmploymentStatus,
+    Race1,
+    Ethnicity1,
+    SpokenLanguage1,
+    EmploymentStatus1,
+    MilitaryStatus1,
     BHHShortName,
     BHHLongName,
     BHHEffectiveDate,
@@ -406,7 +496,11 @@ ActiveNAZMmbrshp <- ActiveNAZMmbrshp |>
     "County" = ResCountyName,
     "AHCCCSID" = AhcccsId.x,
     "DOB" = DOB.x,
-    "Race" = HipaaDescription
+    "Race" = Race1,
+    "EmploymentStatus" = EmploymentStatus1,
+    "MilitaryStatus" = MilitaryStatus1,
+    "Ethnicity" = Ethnicity1,
+    "SpokenLanguage" = SpokenLanguage1
   )
 
 ActiveNAZMmbrshp <-
