@@ -24,6 +24,7 @@ library(tidyverse)
 library(readxl)
 library(webshot)
 library(RODBC)
+library(lubridate)
 
 # Set up ODBC Connection
  QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
@@ -65,7 +66,7 @@ Members_Report_Date = "2023-08-25" #Date that the global members data was extrac
 
 current_date <- "2022-08-25"
 
-Provider_ShortName <- (c("CBI", "CPIH", "EHS", "LCBHC", "MMHC", "SHG", "SBH", "TGC", "WYGC"))
+Provider_ShortName <- (c("CBI", "CPIH", "EHS", "LCBHC", "MMHC", "SHG", "SBHS", "TGC", "PH"))
 
 NAZ_Counties <- (c("Apache", "Coconino", "Mohave", "Navajo", "Yavapai"))
 
