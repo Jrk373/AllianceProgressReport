@@ -93,13 +93,14 @@ The Northern Arizona Regional Behavioral Health Alliance (NARBHA), hereafter "Th
 
 This report outlines Alliance Provider performance, areas of strengths and focus, and plans for improvement and advancement. Our initial review revealed that The Alliance is performing above average for all measures. Areas of focus were identified to assist individual providers that are not meeting the performance standard.
 
-Overall, Alliance performance improved over the last month, increasing it's level of performance above and beyond the measures, Follow Up After Hospitalization (FUH 7 Day), Anti-depressant Medication Management (AMM2), and Use of Opioids at High Dosage (HDO).
+Overall, Alliance performance improved over the last month, increasing it's level of performance above and beyond all the measures, Follow Up After Hospitalization (FUH 7 Day), Anti-depressant Medication Management (AMM2), and Use of Opioids at High Dosage (HDO).
 
+The Alliance continues to perform ABOVE the High Performance Target for Follow Up after Hospitalization!
 
 
 # Enrollments
 
-The next few code sets queries the HCA data bases to gather data from the Global Members Data base.
+The next few code sets query HC data bases to gather data from the Global Members Data base.
 
 ```{sql, connection = QRPTP01, output.var = "GM_Enrollments_AllACC"}
 #| label: AHCCCS Enrollments
@@ -489,6 +490,7 @@ ActiveNAZMmbrshp <-
 
 # Export Active NAZ Membership to csv, update date to date of Progress Report
 # write.csv(ActiveNAZMmbrshp, "./data/output/2023-08-25_ActiveNAZMembership.csv")
+# write.csv(ActiveNAZMmbrshp, "./data/output/ActiveNAZMembership.csv")
 
 ```
 
@@ -567,11 +569,11 @@ Tab_CountyDistribution <- CountyDistribution |>
 
 # Report Output
 gtsave(Tab_CountyDistribution, filename = "./data/output/2023-08-25_Tab_CountyDistribution.png")
-gtsave(Tab_CountyDistribution, filename = "./data/output/2023-08-25_Tab_CountyDistribution.png")
+gtsave(Tab_CountyDistribution, filename = "./data/output/Tab_CountyDistribution.png")
 
 # Dashboard
-gtsave(Tab_CountyDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_CountyDistribution.png")
-gtsave(Tab_CountyDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_CountyDistribution.png")
+# gtsave(Tab_CountyDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_CountyDistribution.png")
+# gtsave(Tab_CountyDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_CountyDistribution.png")
 
 Tab_CountyDistribution
 ```
@@ -597,11 +599,12 @@ Tab_Gender <- ActiveNAZMmbrshp |>
   count(Sex) |> 
   rename(Members = n) |> 
   mutate(Percent = (Members / (sum(Members)))) 
+
 # Export the table as a csv for reference, Date is date of progress report
 write.csv(Tab_Gender, "./data/output/2023-08-25_Tab_Gender.csv")
 ```
 
-The Alliance serves adults and children aged 6 and older. Distribution of gender is balanced, with Male accounting for `r Tab_Gender |> filter(Sex == "Male") |> select(Percent)`, and Female accounting for `r Tab_Gender |> filter(Sex == "Female") |> select(Percent)`. There is no change over last month.
+The Alliance serves adults and children aged 6 and older. Distribution of gender is balanced, with Male accounting for `r Tab_Gender |> filter(Sex == "Male") |> select(Percent)`, and Female accounting for `r Tab_Gender |> filter(Sex == "Female") |> select(Percent)`. There is no significant change over last month.
 :::
 
 ::: {.column}
@@ -616,7 +619,7 @@ Tab_GenderDistribution <- Tab_Gender |>
 gt() |>
   tab_header(
     title = md("**Member Distribution by Sex**"),
-    subtitle = md("As of May 1, 2023")
+    subtitle = Members_Report_Date
   ) |> 
   opt_align_table_header(align = "left") |> 
   fmt_number(Members,
@@ -630,7 +633,7 @@ gt() |>
   # cols_width(Sex ~ px(125),
   #            Members ~ px(125),
   #            Percent ~ px(125)) |> 
-  tab_source_note(source_note = md("*SOURCE: BCBSAZ Global Members, extracted 07-26-2023*")) |> 
+  tab_source_note(source_note = md("*SOURCE: BCBSAZ Global Members, extracted 08-25-2023*")) |> 
   tab_style(
     style = list(
       cell_fill(color = "#31688E"),
@@ -647,11 +650,11 @@ gt() |>
 
 # Report Output
 gtsave(Tab_GenderDistribution, filename = "./data/output/2023-08-25_Tab_GenderDistribution.png")
-gtsave(Tab_GenderDistribution, filename = "./data/output/2023-08-25_Tab_GenderDistribution.png")
+gtsave(Tab_GenderDistribution, filename = "./data/output/Tab_GenderDistribution.png")
 
 # Dashboard
-gtsave(Tab_GenderDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_GenderDistribution.png")
-gtsave(Tab_GenderDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_GenderDistribution.png")
+# gtsave(Tab_GenderDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_GenderDistribution.png")
+# gtsave(Tab_GenderDistribution, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_GenderDistribution.png")
 
 Tab_GenderDistribution
 ```
@@ -660,9 +663,7 @@ Tab_GenderDistribution
 
 ## The figure below demonstrates age distributions of Alliance ACO members
 
-## Important
 The figure below demonstrates age distributions of Alliance ACO members.
-
 
 ```{r}
 #| label: SexByAgeGroup
@@ -764,19 +765,17 @@ Fig_PopPyramid <- ggplot(DemoTable_SexByAgeGroup, aes(y = Age_Group, x = n, fill
 ## Create Graphics
 # Set the file path and name for saving the .png file
 Report <- "./data/output/"
-Report_Filename <- "2023-08-25_Fig_PopPyramid.png"
-
-Dashboard <- "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/"
-Dashboard_FileName1 <- "2023-08-25_Fig_PopPyramid.png"
-Dashboard_FileName2 <- "Fig_PopPyramid.png"
+Report_FileName <- "2023-08-25_Fig_PopPyramid.png"
+Dashboard_FileName <- "Fig_PopPyramid.png"
 
 # Save the ggplot as a .png file
 # Report
-ggsave(file.path(Report, Report_Filename), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+ggsave(file.path(Report, Report_FileName), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+ggsave(file.path(Report, Dashboard_FileName), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
 
 #Dashboard
-ggsave(file.path(Dashboard, Dashboard_FileName1), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
-ggsave(file.path(Dashboard, Dashboard_FileName2), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+# ggsave(file.path(Report, Dashboard_FileName1), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
+# ggsave(file.path(Dashboard, Dashboard_FileName2), plot = Fig_PopPyramid, width = 6, height = 4, dpi = 300)
 
 Fig_PopPyramid
 
@@ -788,7 +787,7 @@ Alliance Providers are assigned members at the beginning of each contract year. 
 
 The ***Alliance Allocation*** represents the number of members for whom the providers are incentivised through the ACO. The ***BCBSAZ Auto Assignment*** represents the population of members for whose care the providers are responsible, and for whom they are measured.
 
-As the COVID19 pandemic public health emergency (PHE), and the resulting restrictions on disenrollment of Medicaid recipients, is ended, we will monitor the rates of enrollment. It is estimated that 37,000 enrolled BCBSAZ members will lose coverage when the PHE ends. It is unknown how many of those will be Alliance members.
+We continue to monitor the impact of ending of the COVID19 public health emergency. 
 
 ```{r}
 #| label: AllianceAllocation
@@ -898,11 +897,11 @@ Tab_Alloc_v_Assignment <- ContractAlloc_v_Assignment |>
 
 # Report Output
 gtsave(Tab_Alloc_v_Assignment, filename = "./data/output/2023-08-25_Tab_Alloc_v_Assignment.png")
-gtsave(Tab_Alloc_v_Assignment, filename = "./data/output/2023-08-25_Tab_Alloc_v_Assignment.png")
+gtsave(Tab_Alloc_v_Assignment, filename = "./data/output/Tab_Alloc_v_Assignment.png")
 
 # Dashboard
-gtsave(Tab_Alloc_v_Assignment, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_Alloc_v_Assignment.png")
-gtsave(Tab_Alloc_v_Assignment, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Alloc_v_Assignment.png")
+# gtsave(Tab_Alloc_v_Assignment, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_Alloc_v_Assignment.png")
+# gtsave(Tab_Alloc_v_Assignment, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Alloc_v_Assignment.png")
 
 Tab_Alloc_v_Assignment
 ```
@@ -1035,7 +1034,7 @@ Tab_AllProvPerformance <- AllAlliancePerformance |>
 gt() |> 
   tab_header(
     title = md("Overall Performance of Alliance Provider Network"),
-    subtitle = "Report as of 2023-08-25"
+    subtitle = Reportasof
   ) |> 
   fmt_percent(columns = c("Percent_Compliant", "NCQA_Mean"), 
             decimals = 2,
@@ -1059,7 +1058,7 @@ gt() |>
    #           PerformanceLevel ~ px(120)
    #           ) |>
   tab_source_note(
-    source_note = md("*SOURCE: BCBSAZ VBP Performance Reports, Claims Adjudicated Through 2023-06-30* </br> *FUM not required by contract*")
+    source_note = md("*SOURCE: BCBSAZ VBP Performance Reports, Claims Adjudicated Through 2023-07-31* </br> *FUM not required by contract*")
   ) |> 
   tab_style(
     style = list(
@@ -1077,11 +1076,11 @@ gt() |>
 
 # Report Output
 gtsave(Tab_AllProvPerformance, filename = "./data/output/2023-08-25_Tab_AllProvPerformance.png")
-gtsave(Tab_AllProvPerformance, filename = "./data/output/2023-08-25_Tab_AllProvPerformance.png")
+gtsave(Tab_AllProvPerformance, filename = "./data/output/Tab_AllProvPerformance.png")
 
 # Dashboard
-gtsave(Tab_AllProvPerformance, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_AllProvPerformance.png")
-gtsave(Tab_AllProvPerformance, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_AllProvPerformance.png")
+# gtsave(Tab_AllProvPerformance, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_AllProvPerformance.png")
+# gtsave(Tab_AllProvPerformance, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_AllProvPerformance.png")
 
 Tab_AllProvPerformance
 
@@ -1206,15 +1205,16 @@ Fig_AllProvLollipop <- ggplot(Tab_AllProvLollipop, aes(x = Provider_ShortName, y
         strip.text.x = element_text(size = 12, color = "white", face = "bold")) +
   labs(title = "Alliance Provider Target Measure Compliance",
        subtitle = "With Percent of Total Eligible Participants",
-       caption = "Data source: BCBSAZ VBP Report, Claims Adjudicated Through 2023-06-30")
+       caption = "Data source: BCBSAZ VBP Report, Claims Adjudicated Through 2023-07-31")
 
 # Save the ggplot as a .png file
 ggsave(file = "./data/output/2023-08-25_Fig_AllProvLollipop.png", plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+ggsave(file = "./data/output/Fig_AllProvLollipop.png", plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
 
 # Save the ggplot for the dashboard
-Dashboard <- "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/"
-Dashboard_FileName <- "Fig_AllProvLollipop.png"
-ggsave(file.path(Dashboard, Dashboard_FileName), plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
+# Dashboard <- "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/"
+# Dashboard_FileName <- "Fig_AllProvLollipop.png"
+# ggsave(file.path(Dashboard, Dashboard_FileName), plot = Fig_AllProvLollipop, width = 6, height = 4, dpi = 300)
 
 Fig_AllProvLollipop
 
@@ -1289,7 +1289,7 @@ gt() |>
    #           PerformanceLevel ~ px(120)
    #           ) |>
   tab_source_note(
-    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-06-30*")
+    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-7-31*")
   ) |> 
   tab_style(
     style = list(
@@ -1307,11 +1307,11 @@ gt() |>
 
 # Report Output
 gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
-gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
+gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "./data/output/Tab_IndivAlliancePerformance_AMM2.png")
 
 # Dashboard
-gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
-gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_AMM2.png")
+# gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_AMM2.png")
+# gtsave(Tab_IndivAlliancePerformance_AMM2, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_AMM2.png")
 
 Tab_IndivAlliancePerformance_AMM2
 
@@ -1385,7 +1385,7 @@ gt() |>
    #           PerformanceLevel ~ px(120)
    #           ) |>
   tab_source_note(
-    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-06-30*")
+    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-07-31*")
   ) |> 
   tab_style(
     style = list(
@@ -1401,11 +1401,11 @@ gt() |>
 
 # Report Output
 gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
-gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
+gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "./data/output/Tab_IndivAlliancePerformance_FUH7.png")
 
 # Dashboard
-gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
-gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_FUH7.png")
+# gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_FUH7.png")
+# gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_FUH7.png")
 
 Tab_IndivAlliancePerformance_FUH7
 ```
@@ -1476,7 +1476,7 @@ gt() |>
    #           PerformanceLevel ~ px(120)
    #           ) |>
   tab_source_note(
-    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-06-30*")
+    source_note = md("*SOURCE: BCBSAZ VBP Quality Roster, Claims Adjudicated Through 2023-07-31*")
   ) |> 
   tab_style(
     style = list(
@@ -1492,11 +1492,11 @@ gt() |>
 
 # Report Output
 gtsave(Tab_IndivAlliancePerformance_HDO, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
-gtsave(Tab_IndivAlliancePerformance_HDO, filename = "./data/output/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
+gtsave(Tab_IndivAlliancePerformance_HDO, filename = "./data/output/Tab_IndivAlliancePerformance_HDO.png")
 
 # Dashboard
-gtsave(Tab_IndivAlliancePerformance_HDO, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
-gtsave(Tab_IndivAlliancePerformance_HDO, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_HDO.png")
+# gtsave(Tab_IndivAlliancePerformance_HDO, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/2023-08-25_Tab_IndivAlliancePerformance_HDO.png")
+# gtsave(Tab_IndivAlliancePerformance_HDO, filename = "C:/Users/KGLtd/OneDrive - The NARBHA Institute/Site Assets/SitePages/Alliance-Dashboard/Tab_IndivAlliancePerformance_HDO.png")
 
 Tab_IndivAlliancePerformance_HDO
 ```
