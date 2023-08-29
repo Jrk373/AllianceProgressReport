@@ -206,6 +206,7 @@ WHERE Void = 0
 
 # Merge Enrollment files
 
+# "Enrollments" and "Clients" tables give us starting data
 AllianceEnrolledMembers_Merge <-
   merge(x = GM_Enrollments_AllACC,
         y = Clients_Demographics_AllACC,
@@ -228,6 +229,7 @@ AllianceEnrolledMembers_Merge <-
     DisenrollmentDate
   )
 
+# "DailyMemberShipAllArizonaEnrollments" gives us AHCCCSID and BHH auto assignments
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
         y = GM_ALLAZ_Enrollments,
@@ -254,24 +256,28 @@ AllianceEnrolledMembers_Merge <-
     DisenrollmentDate.x
   )
 
-# Update some BHH SHort Names
+# Update some BHH Short Names
 AllianceEnrolledMembers_Merge$BHHShortName <- gsub("SBH", "SBHS", AllianceEnrolledMembers_Merge$BHHShortName)
 AllianceEnrolledMembers_Merge$BHHShortName <- gsub("EHS", "CBI", AllianceEnrolledMembers_Merge$BHHShortName)
 AllianceEnrolledMembers_Merge$BHHShortName <- gsub("WYGC", "PH", AllianceEnrolledMembers_Merge$BHHShortName)
 
+# "DailyMemberShipAllArizonaAddresses" gives us address and phone info
 AllianceEnrolledMembers_Merge <-
   merge(x = AllianceEnrolledMembers_Merge,
         y = GM_ALLAZ_Addresses,
         by = "PrimaryId",
         all.x = TRUE)
 
+# Calculate age from DOB
 AllianceEnrolledMembers_Merge$Age <- interval(AllianceEnrolledMembers_Merge$DOB, Sys.Date()) %/% years(1)
 
+# Create age groupings from Age
 age_breaks <- c(0, 6, 18, 25, 40, 60, 80, 100)
 age_labels <- c("0 - 6", "7 - 18", "19 - 25", "26 - 40", "41 - 60", "61 - 80", "81 - 100")
 
 AllianceEnrolledMembers_Merge$AgeGroups <- cut(AllianceEnrolledMembers_Merge$Age, breaks = age_breaks, labels = age_labels, right = FALSE)
 
+# DUGless gives us veteran and employment status
 AllianceEnrolledMembers_Merge<-
   merge(x = AllianceEnrolledMembers_Merge,
         y = GM_DUGLess,
@@ -283,17 +289,18 @@ AllianceEnrolledMembers_Merge$ResCountyName <-
   trimws(AllianceEnrolledMembers_Merge$ResCountyName)
 
 # Filter for The Alliance Providers and the Northern Counties
-AllianceEnrolledMembers <-
+AllianceEnrolledMembers_Merge <-
   AllianceEnrolledMembers_Merge |> 
   filter(BHHShortName %in% Provider_ShortName)
 
-AllianceEnrolledMembers <-
-  AllianceEnrolledMembers |> 
+# Filter for northern counties
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
   filter(ResCountyName %in% NAZ_Counties)
 
 # Filter out dead people (no offense intended)
-ActiveNAZMmbrshp <-
-  AllianceEnrolledMembers |> 
+AllianceEnrolledMembers_Merge <-
+  AllianceEnrolledMembers_Merge |> 
   filter(is.na(DOD)) |> 
   filter(is.na(DisenrollmentDate.x))
 
@@ -378,7 +385,6 @@ AllianceEnrolledMembers_Merge <-
   select(-SpokenLanguage)
 
 # Add employment codes
-
 EmploymentCodes <- read.csv("./data/EmploymentCodes.csv")
 
 EmploymentCodes <-
@@ -404,7 +410,6 @@ AllianceEnrolledMembers_Merge <-
   select(-EmploymentStatus)
 
 # Add military codes
-
 MilitaryCodes <- read.csv("./data/MilitaryCodes.csv")
 
 MilitaryCodes <-
@@ -429,6 +434,7 @@ AllianceEnrolledMembers_Merge <-
   AllianceEnrolledMembers_Merge |> 
   select(-MilitaryStatus)
 
+# Select variables for analysis
 ActiveNAZMmbrshp <- 
   AllianceEnrolledMembers_Merge |> 
   select(
@@ -461,8 +467,8 @@ ActiveNAZMmbrshp <-
     EmergencyPhone,
     EmailAddress
 )
-# Trim extra spaces at end of rescountyname
 
+# Rename some columns
 ActiveNAZMmbrshp <- ActiveNAZMmbrshp |> 
   rename(
     "EnrollmentDate" = EnrollmentDate.x,
@@ -482,11 +488,12 @@ ActiveNAZMmbrshp <- ActiveNAZMmbrshp |>
     "SpokenLanguage" = SpokenLanguage1
   )
 
-ActiveNAZMmbrshp <-
-  ActiveNAZMmbrshp |> 
-  filter(is.na(DisenrollmentDate)) |> 
-  filter(BHHShortName %in% Provider_ShortName) |> 
-  filter(County %in% NAZ_Counties)
+# Filter final product
+# ActiveNAZMmbrshp <-
+#   ActiveNAZMmbrshp |> 
+#   filter(is.na(DisenrollmentDate)) |> 
+#   filter(BHHShortName %in% Provider_ShortName) |> 
+#   filter(County %in% NAZ_Counties)
 
 # Export Active NAZ Membership to csv, update date to date of Progress Report
 # write.csv(ActiveNAZMmbrshp, "./data/output/2023-08-25_ActiveNAZMembership.csv")
