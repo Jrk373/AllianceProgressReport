@@ -27,7 +27,7 @@ library(RODBC)
 library(lubridate)
 
 # Set up ODBC Connection
- QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
+# QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
 
 ```
 
@@ -450,7 +450,7 @@ ActiveNAZMmbrshp <-
     Race1,
     Ethnicity1,
     SpokenLanguage1,
-    EmploymentStatus1,
+    #EmploymentStatus1,
     MilitaryStatus1,
     BHHShortName,
     BHHLongName,
@@ -482,11 +482,16 @@ ActiveNAZMmbrshp <- ActiveNAZMmbrshp |>
     "AHCCCSID" = AhcccsId.x,
     "DOB" = DOB.x,
     "Race" = Race1,
-    "EmploymentStatus" = EmploymentStatus1,
+    #"EmploymentStatus" = EmploymentStatus1,
     "MilitaryStatus" = MilitaryStatus1,
     "Ethnicity" = Ethnicity1,
     "SpokenLanguage" = SpokenLanguage1
   )
+
+
+
+# Assuming ActiveNAZMembership is your data frame
+ActiveNAZMmbrshp <- distinct(ActiveNAZMmbrshp)
 
 # Filter final product
 # ActiveNAZMmbrshp <-
@@ -912,6 +917,7 @@ gtsave(Tab_Alloc_v_Assignment, filename = "./data/output/Tab_Alloc_v_Assignment.
 
 Tab_Alloc_v_Assignment
 ```
+
 
 # Performance Measurement
 
