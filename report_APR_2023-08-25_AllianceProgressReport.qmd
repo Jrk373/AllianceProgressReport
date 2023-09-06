@@ -27,14 +27,14 @@ library(RODBC)
 library(lubridate)
 
 # Set up ODBC Connection
-# QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
+ QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
 
 ```
 
 ```{r}
 #| label: Load Data
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -52,7 +52,7 @@ ZipDatabase <- read.csv("./data/data_reference_zip_code_database.csv")
 ```{r}
 #| label: Create_Common_Objects
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -87,26 +87,24 @@ NCQA_MeanList = c(.5729, .3936, .401, .93)
 Allocations <- AllianceProvAllocation$`Annual Member Months`
 ```
 
-# Introduction
+# Executive Summary
 
 The Northern Arizona Regional Behavioral Health Alliance (NARBHA), hereafter "The Alliance", is a collaborative project between The Narbha Institute (TNI) and Blue Cross Blue Shield of Arizona - Health Choice (BCBSAZ-HC). It is a first of its kind Behavioral Health Accountable Care Organization (ACO), specifically created to improve the health outcomes of disadvantaged people in rural Arizona. The focus of the Alliance is quality improvement and member satisfaction in our rural communities, as well as clinical advancement of our providers and program development of best practices.
 
-This report outlines Alliance Provider performance, areas of strengths and focus, and plans for improvement and advancement. Our initial review revealed that The Alliance is performing above average for all measures. Areas of focus were identified to assist individual providers that are not meeting the performance standard.
-
-Overall, Alliance performance improved over the last month, increasing it's level of performance above and beyond all the measures, Follow Up After Hospitalization (FUH 7 Day), Anti-depressant Medication Management (AMM2), and Use of Opioids at High Dosage (HDO).
+This report outlines Alliance Provider performance, areas of strengths and focus, and plans for improvement and advancement. Overall, Alliance performance improved over the last month, increasing it's level of performance above and beyond ALL the measure targets, including Follow Up After Hospitalization (FUH 7 Day), Anti-depressant Medication Management (AMM2), and Use of Opioids at High Dosage (HDO).
 
 The Alliance continues to perform ABOVE the High Performance Target for Follow Up after Hospitalization!
 
 
 # Enrollments
 
-The next few code sets query HC data bases to gather data from the Global Members Data base.
+The Alliance, in close coordination with Health Choice, gathers member enrollment data from Health Choice databases, joining various data sources to compile a thorough and actionable active member roster. The roster is then distributed to each Alliance Provider by way of their respective Alliance Individualized Dashboards.
 
 ```{sql, connection = QRPTP01, output.var = "GM_Enrollments_AllACC"}
 #| label: AHCCCS Enrollments
 #| eval: true
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -127,7 +125,7 @@ ORDER BY PrimaryId , EnrollmentDate DESC
 #| label: GM All AZ Enrollments
 #| eval: true
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -144,7 +142,7 @@ ORDER BY PrimaryId
 #| label: GM All AZ Addresses
 #| eval: true
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -160,7 +158,7 @@ WHERE Void = 0
 #| label: Client Demograhics
 #| eval: true
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -181,7 +179,7 @@ ORDER BY LastName DESC
 #| label: GM DugLess
 #| eval: true
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -193,11 +191,32 @@ WHERE Void = 0
   
 ```
 
+```{sql, connection = QRPTP01, output.var = "LastService"}
+
+WITH RankedClaims AS (
+    SELECT
+        PrimaryID,
+        BegDate,
+        ProviderName,
+		ProviderType,
+        ROW_NUMBER() OVER (PARTITION BY PrimaryID ORDER BY BegDate DESC) AS rn
+    FROM claims.dbo.shcavos
+    --WHERE BegDate >= @start AND BegDate <= @end
+)
+SELECT PrimaryID, BegDate, ProviderName
+FROM RankedClaims
+WHERE rn = 1
+    AND ProviderType IN ('02','29', '64', '63', '71', 
+	'77', '78', 'A3', 'A5', 'A6', 'B1', 'B2', 'B3', 
+	'B5', 'B6', 'B7', 'B8', 'C2', 'C5', 'IC')
+
+```
+
 ```{r}
 #| label: Enrollment
 #| eval: true
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -493,6 +512,20 @@ ActiveNAZMmbrshp <- ActiveNAZMmbrshp |>
 # Assuming ActiveNAZMembership is your data frame
 ActiveNAZMmbrshp <- distinct(ActiveNAZMmbrshp)
 
+# Add last service
+
+LastService <-
+  LastService |> 
+  rename("PrimaryId" = PrimaryID,
+         "DateLastService" = BegDate,
+         "LastServiceProvider" = ProviderName)
+
+ActiveNAZMmbrshp <- 
+  merge(x = ActiveNAZMmbrshp,
+        y = LastService,
+        by = "PrimaryId",
+        all.x = TRUE)
+
 # Filter final product
 # ActiveNAZMmbrshp <-
 #   ActiveNAZMmbrshp |> 
@@ -514,7 +547,7 @@ The Alliance serves `r ActiveNAZMmbrshp |> nrow()` people, as of `r Members_Repo
 ```{r}
 #| label: CountyDistribution
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -542,7 +575,7 @@ There are no significant changes in the balance of members across the Northern R
 ```{r}
 #| label: Graphic_CountyDistribution_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -598,7 +631,7 @@ Tab_CountyDistribution
 ```{r}
 #| label: GenderDistribution
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -623,7 +656,7 @@ The Alliance serves adults and children aged 6 and older. Distribution of gender
 ```{r}
 #| label: Graphic_GenderDistribution_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -680,7 +713,7 @@ The figure below demonstrates age distributions of Alliance ACO members.
 ```{r}
 #| label: SexByAgeGroup
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -735,7 +768,7 @@ write.csv(DemoTable_SexByAgeGroup, "./data/output/2023-08-25_DemoTable_SexByAgeG
 ```{r}
 #| label: Graphic_SexByAgeGroup_Pyramid
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -746,7 +779,7 @@ Fig_PopPyramid <- ggplot(DemoTable_SexByAgeGroup, aes(y = Age_Group, x = n, fill
                  hjust = ifelse(
                    sex == "Female", -.3, 1.3)),
                  size = 3) +
-   scale_fill_manual(values = c(Female = "#440154", Male = "#440154"), drop = FALSE) +
+   scale_fill_manual(values = c(Female = "#440154", Male = "#35B779"), drop = FALSE) +
    facet_wrap(~sex, scales = "free") +
    facetted_pos_scales(
      x = list(
@@ -804,7 +837,7 @@ We continue to monitor the impact of ending of the COVID19 public health emergen
 ```{r}
 #| label: AllianceAllocation
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -864,7 +897,7 @@ write.csv(ContractAlloc_v_Assignment, "./data/output/2023-08-25_ContractAlloc_v_
 ```{r}
 #| label: Graphic_AllianceAllocation_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -929,7 +962,7 @@ The goal of the Alliance is to improve the Effectiveness of Care in the ACO comm
 ```{r}
 #| label: Graphic_HEDISMeasures_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -978,7 +1011,7 @@ In order to report performance of the dependent variable, the Alliance Progress 
 ```{r}
 #| label: VBPCompliance_AllMeasures
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1038,7 +1071,7 @@ write.csv(AllAlliancePerformance, "./data/output/2023-05-31_Tab_AllAlliancePerfo
 ```{r}
 #| label: Graphic_AllProviderPerformance_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1107,13 +1140,12 @@ Tab_AllProvPerformance
 
 -   HDO: The overall score for HDO was `r AllAlliancePerformance |> filter(SubMeasureID == "HDO") |> select(Percent_Compliant)`(`r AllAlliancePerformance |> filter(SubMeasureID == "HDO") |> select(PerformanceLevel)`)
 
-## Important
 The figure below demonstrates The Alliance performance scores.
 
 ```{r}
 #| label: Graphic_AllProviderPerformanceLollipop
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1191,9 +1223,11 @@ The figure below demonstrates The Alliance performance scores.
 ```
 
 ```{r}
-library(ggplot2)
-
-# Assuming Tab_PercentCompliant is already defined
+#| label: Lollipop figure
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
 
 # Calculate PercentTotalEligible
 Tab_AllProvLollipop <- Tab_PercentCompliant %>%
@@ -1236,12 +1270,12 @@ Fig_AllProvLollipop
 
 ### A Closer Look
 
-#### AMM
+#### Antidepressant Medication Management (AMM)
 
 ```{r}
 #| label: IndividualMeasurePerformance_AMM2
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1263,7 +1297,7 @@ write.csv(IndivAlliancePerformance_AMM2, "./data/output/2023-08-25_IndivAlliance
 ```{r}
 #| label: Graphic_IndividualMeasurePerformance_AMM2_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1331,12 +1365,12 @@ Tab_IndivAlliancePerformance_AMM2
 
 ```
 
-#### FUH
+#### Follow Up After Hospitalization (FUH)
 
 ```{r}
 #| label: IndividualMeasurePerformance_FUH7
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1358,7 +1392,7 @@ write.csv(IndivAlliancePerformance_FUH7, "./data/output/2023-08-25_IndivAlliance
 ```{r}
 #| label: Graphic_IndividualMeasurePerformance_FUH7_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1423,12 +1457,12 @@ gtsave(Tab_IndivAlliancePerformance_FUH7, filename = "./data/output/Tab_IndivAll
 Tab_IndivAlliancePerformance_FUH7
 ```
 
-#### HDO
+#### Use of Opioids at High Dosage (HDO)
 
 ```{r}
 #| label: IndividualMeasurePerformance_HDO
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
@@ -1450,7 +1484,7 @@ write.csv(IndivAlliancePerformance_HDO, "./data/output/2023-08-25_IndivAllianceP
 ```{r}
 #| label: Graphic_IndividualMeasurePerformance_HDO_Table
 #| include: true
-#| echo: true
+#| echo: false
 #| warning: false
 #| error: false
 
