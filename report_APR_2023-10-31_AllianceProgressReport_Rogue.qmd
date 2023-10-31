@@ -1008,6 +1008,19 @@ In order to report performance of the dependent variable, the Alliance Progress 
 
 [^1]: Kivela, John Ryan. (2023). Value Based Purchasing Validation Model. The Alliance ACO.
 
+## First filter VBP_Rep_Comb for active alliance members
+
+```{r}
+
+AllianceEnrolledMembers <- read.csv("./data/AllianceEnrolledMembers.csv")
+
+VBP_Rep_Comb_validation_complete$`Member ID` <- substr(VBP_Rep_Comb_validation_complete$`Member ID`, 4, nchar(VBP_Rep_Comb_validation_complete$`Member ID`))
+
+VBP_Rep_Comb_validation_MembersOnly <- VBP_Rep_Comb_validation_complete |> 
+  filter(`Member ID` %in% AllianceEnrolledMembers$AhcccsId)
+
+```
+
 ```{r}
 #| label: VBPCompliance_AllMeasures
 #| include: true
@@ -1020,7 +1033,7 @@ In order to report performance of the dependent variable, the Alliance Progress 
 
 # Make the compliance/performance table. This is a summary table from the aggregated VBPQR. 
 # This is a transparency table that is available to Alliance Providers for their own assessment.
-Tab_PercentCompliant <- VBP_Rep_Comb_validation_complete |> 
+Tab_PercentCompliant <- VBP_Rep_Comb_validation_MembersOnly |> 
   mutate(Compliant = if_else(`Gap Status` == "OPEN", 0, 1)) |> 
   mutate(TotalEligible = if_else(`Gap Status` != 0, 1, 0)) |> 
   rename("AdaptedCompliant" = Compliant) |> 
