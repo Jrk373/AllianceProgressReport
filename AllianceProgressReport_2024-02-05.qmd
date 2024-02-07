@@ -1,0 +1,826 @@
+---
+title: "Alliance ACO Progress Report"
+subtitle: "Northern Arizona Regional Behavioral Health Alliance Accountable Care Organization"
+author: "John Ryan Kivela, MA"
+date: today
+format:
+  html:
+    theme: pulse
+    embed-resources: true
+    toc: true
+    code-fold: true
+    footnotes-hover: true
+---
+
+# Setup
+
+```{r}
+#| label: Setup
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Load Packages and libraries
+library(ggh4x)
+library(gt)
+library(scales)
+library(tidyverse)
+
+
+# Set up ODBC Connection
+# QRPTP01 <- DBI::dbConnect(odbc::odbc(),"AllianceData")
+
+
+
+```
+
+
+```{r}
+#| label: Create_Common_Objects
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Create common objects for all of document
+
+# Get the current date
+current_date <- Sys.Date()
+
+# Extract the year from the current date
+current_year <- format(current_date, "%Y")
+
+# Extract the month from the current date
+current_month <- format(current_date, "%m")
+
+# Get the current year and month
+current_year_month <- format(Sys.Date(), "%Y-%m")
+
+# Format the current date as a character string
+current_year_month_graphics <- format(current_date, "%B %Y")
+
+# Create a folder with the current year and month
+folder_path <- file.path("./data/output", current_year_month)
+dir.create(folder_path, recursive = TRUE, showWarnings = FALSE)
+
+Provider_ShortName <- (c("CBI", "CPIH", "EHS", "LCBHC", "MMHC", "SHG", "SBHS", "TGC", "PH"))
+# 
+# NAZ_Counties <- (c("Apache", "Coconino", "Mohave", "Navajo", "Yavapai"))
+# 
+# # Various vectors of data for mapping features
+# 
+# MainStates <- map_data("state") #table with state info, lat, long, etc.
+# Arizona <- filter(MainStates, region == "arizona")
+# AZ_County <- (c("Apache County", "Coconino County", "Mohave County", "Navajo County", "Yavapai County"))
+# AZ_County_Map <- (c("Apache", "Coconino", "Mohave", "Navajo", "Yavapai"))
+# countyref <- county.map |> filter(NAME %in% AZ_County_Map)
+# NAZ_Zips <- ZipDatabase |> filter(county %in% AZ_County) |> select(zip)
+# Vec_AZ_Zips <- NAZ_Zips$zip
+# 
+# # Create NCQA Mean vector
+# NCQA_MeanList = c(.5729, .3936, .401, .93)
+# 
+# # Vector of alliance allocations
+# Allocations <- AllianceProvAllocation$`Annual Member Months`
+```
+
+# Executive Summary
+
+The Northern Arizona Regional Behavioral Health Alliance (NARBHA), hereafter "The Alliance", is a first of its kind Behavioral Health Accountable Care Organization (ACO), specifically created to improve the health outcomes of disadvantaged people in rural Arizona. 
+
+The Alliance has a prioritized set of goals including:
+
+  -   Quality improvement
+  -   Provider Well-being
+  -   Member satisfaction in rural communities
+  -   Clinical advancement of providers
+  -   Program development of best practices.
+  
+The Alliance currently has a simple contract with Blue Cross Blue Sheila of Arizona, Health Choice, with a focus on the following Value Based Purchasing (VBP) metrics.
+
+  -   Follow Up after Hospitalization for Mental Illness (FUH 7 Day)
+  -   Follow Up after Emergency Department visit for Mental Illness (FUM7)
+  -   Anti-depressant Medication Management (AMM2)
+
+# Enrollments
+
+The Alliance, in close coordination with Health Choice, gathers member enrollment data from the Health Choice data warehouse, joining various data sources to compile a thorough and actionable active member roster. The roster is then distributed daily to each Alliance Provider by way of their respective Alliance Individualized Dashboards.
+
+```{r}
+#| label: Alliance Enrolled Members
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# The Alliance Enrollment Roster is generated from the Community Health Outreach roster.
+
+# Import data
+AllianceEnrolledMembers <- read.csv("./data/input/AllianceEnrolledMembers.csv")
+
+# Filter for only members with an open enrollment segment
+ActiveNAZMembership <- 
+  AllianceEnrolledMembers |> 
+  filter(is.na(DisenrollmentDate))
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("ActiveNAZMembership_", current_year_month, ".csv", sep = ""))
+
+# Write the data frame to a CSV file
+write.csv(ActiveNAZMembership, file = output_filename, row.names = FALSE)
+
+```
+
+### Membership by County
+:::: {.columns}
+::: {.column}
+```{r}
+#| label: CountyDistribution
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Calculate County Distribution
+CountyDistribution <- 
+  ActiveNAZMembership %>%
+    group_by(ResCountyName) %>%
+    summarize(
+      Cases = n(),
+      PercentOfTotal = (n() / sum(n())) * 100
+              )
+  
+# Group by ResCountyName and count the number of cases per ResCountyName
+CountyDistribution <- 
+  ActiveNAZMembership %>% 
+    group_by(ResCountyName) %>% 
+    summarise(count = n())
+
+# Calculate the percent of the grand total for each ResCountyName
+CountyDistribution$percent <- CountyDistribution$count / sum(CountyDistribution$count) * 100 
+
+# Rename and reformat
+CountyDistribution <-
+  CountyDistribution |> 
+  rename(County = "ResCountyName",
+         Members = "count",
+         Percent = "percent") |> 
+  mutate(Percent = scales::percent(Percent / 100))
+```
+
+```{r}
+#| label: Table_CountyDistribution
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Make a table
+# Create a table for the CountyDistribution data frame
+Table_CountyDistribution <-
+gt(CountyDistribution) %>%
+  fmt_number(
+    columns = vars(Members),
+    decimals = 0,
+    sep_mark = ","
+  ) |> 
+  cols_width(County ~ px(125),
+            Members ~ px(120),
+            Percent ~ px(120)) |> 
+    tab_header(
+    title = "Member Distribution by NAZ County",
+    subtitle = current_year_month_graphics
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(align = "left")
+    ),
+    locations = list(
+      cells_title(groups = c("title", "subtitle"))
+    )
+  )
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Table_CountyDistribution_", current_year_month, ".png", sep = ""))
+
+# Save the table as a .png file
+gtsave(Table_CountyDistribution, filename = output_filename)
+
+# To general folder for dashboard
+gtsave(Table_CountyDistribution, filename = "./data/output/Table_CountyDistribution.png")
+
+Table_CountyDistribution
+
+```
+:::
+
+:::{.column}
+```{r}
+#| label: Plot_CountyDistribution
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Calculate the count for each county
+county_counts <- table(ActiveNAZMembership$ResCountyName)
+
+# Convert counts to percentages
+county_percentages <- county_counts / sum(county_counts) * 100
+
+# Create a data frame with county names and percentages
+county_df <- data.frame(County = names(county_percentages), 
+                        Percentage = county_percentages)
+
+# Create the column chart
+Plot_CountyDistribution <- 
+  ggplot(county_df, aes(x = County, 
+                        y = Percentage.Freq)) +
+    geom_col(fill = "#440154") +
+      theme_bw() +
+      theme(plot.background = element_rect(fill = "transparent")) +
+      labs(title = "Member Distribution by NAZ County", 
+           subtitle = current_year_month_graphics, 
+           x = "County", 
+           y = "Percent of Members") +
+      coord_flip() +
+  scale_y_continuous()
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Plot_CountyDistribution_", current_year_month, ".png", sep = ""))
+
+# Save the plot as a .png file
+# To monthly folder
+ggsave(output_filename, plot = Plot_CountyDistribution)
+# To general folder for dashboard
+ggsave("./data/output/Plot_CountyDistribution.png", plot = Plot_CountyDistribution)
+
+Plot_CountyDistribution
+
+```
+:::
+::::
+
+
+### Gender and Age
+:::: {.columns}
+::: {.column}
+```{r}
+#| label: GenderDistribution
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Gender distribution table
+GenderDistribution <- 
+  ActiveNAZMembership |> 
+    mutate(Sex = case_when(
+      Sex == "M" ~ "Male",
+      Sex == "F" ~ "Female"
+    )) |> 
+    count(Sex) |> 
+    rename(Members = n,
+           Gender = "Sex") |> 
+    mutate(Percent = (Members / (sum(Members)))) |> 
+    mutate(Percent = scales::percent(Percent))
+
+```
+
+```{r}
+#| label: Table_GenderDistribution
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Make a table
+# Create a table for the Gender Distribution data frame
+Table_GenderDistribution <-
+  gt(GenderDistribution) %>%
+    fmt_number(
+      columns = vars(Members),
+      decimals = 0,
+      sep_mark = ","
+    ) |> 
+    cols_width(Gender ~ px(125),
+              Members ~ px(100),
+              Percent ~ px(100)) |> 
+  tab_header(
+    title = "Gender Distribution by NAZ County",
+    subtitle = current_year_month_graphics
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(align = "left")
+    ),
+    locations = list(
+      cells_title(groups = c("title", "subtitle"))
+    )
+  )
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Table_GenderDistribution_", current_year_month, ".png", sep = ""))
+
+# Save the table as a .png file
+gtsave(Table_GenderDistribution, filename = output_filename)
+
+# To general folder for dashboard
+gtsave(Table_GenderDistribution, filename = "./data/output/Table_GenderDistribution.png")
+
+Table_GenderDistribution
+
+```
+:::
+
+::: {.column}
+```{r}
+#| label: Plot_GenderDistribution
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Calculate the count for each gender
+gender_counts <- table(ActiveNAZMembership$Sex)
+
+# Convert counts to percentages
+gender_percentages <- gender_counts / sum(gender_counts) * 100
+
+# Create a data frame with county names and percentages
+gender_df <- data.frame(Gender = names(gender_percentages), 
+                        Percentage = gender_percentages)
+
+# Create the column chart
+Plot_GenderDistribution <- 
+  ggplot(gender_df, aes(x = Gender, 
+                        y = Percentage.Freq)) +
+      geom_col(fill = "#440154") +
+      theme_bw() +
+      theme(plot.background = element_rect(fill = "transparent")) +
+      labs(title = "Gender Distribution in Northern Arizona", 
+           subtitle = current_year_month_graphics, 
+           x = "Gender", 
+           y = "Percent of Members") +
+      coord_flip()
+  
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Plot_GenderDistribution_", current_year_month, ".png", sep = ""))
+
+# Save the plot as a .png file
+# To monthly folder
+ggsave(output_filename, plot = Plot_GenderDistribution)
+# To general folder for dashboard
+ggsave("./data/output/Plot_GenderDistribution.png", plot = Plot_GenderDistribution)
+
+Plot_GenderDistribution
+
+```
+:::
+::::
+
+## Gender and Age Distributions of Alliance ACO members.
+
+```{r}
+#| label: SexByAgeGroup
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Create the table for the Population Pyramid
+DemoTable_SexByAgeGroup <- ActiveNAZMembership |> 
+  mutate(Age = floor(as.numeric(difftime(Sys.Date(), 
+                                         DOB, 
+                                         units = "days")) / 365.25)) |> 
+  select(Age, Sex) |> 
+  mutate(`00 - 05` = case_when(
+    Age > 00 & Age <= 5 ~ "1", TRUE ~ "0")) |>
+  mutate(`06 - 12` = case_when(
+    Age > 06 & Age <= 12 ~ "1", TRUE ~ "0")) |> 
+  mutate(`13 - 17` = case_when(
+    Age > 13 & Age <= 17 ~ "1", TRUE ~ "0")) |> 
+  mutate(`18 - 34` = case_when(
+    Age > 18 & Age <= 34 ~ "1", TRUE ~ "0")) |> 
+  mutate(`35 - 64` = case_when(
+    Age > 35 & Age <= 64 ~ "1", TRUE ~ "0")) |> 
+  mutate(`65 - 99` = case_when(
+    Age > 65  ~ "1", TRUE ~ "0")) |> 
+  subset(select = -Age) |> 
+  #covert to dbl
+  mutate(`00 - 05` = as.numeric(`00 - 05`)) |>  
+  mutate(`06 - 12` = as.numeric(`06 - 12`)) |> 
+  mutate(`13 - 17` = as.numeric(`13 - 17`)) |> 
+  mutate(`18 - 34` = as.numeric(`18 - 34`)) |> 
+  mutate(`35 - 64` = as.numeric(`35 - 64`)) |> 
+  mutate(`65 - 99` = as.numeric(`65 - 99`)) |> 
+  #Group by sex and summarize
+  group_by(Sex) |> 
+  summarise_if(is.numeric, sum, na.rm = TRUE) |> 
+  pivot_longer(!Sex, 
+               names_to = "Age_Group",
+               values_to = "n") |> 
+  # Change "M" "F" to "Male" "Female"
+  mutate(Sex = case_when(
+    Sex == "M" ~ "Male",
+    Sex == "F" ~ "Female"
+  )) |> 
+  filter(!is.na(Sex)) |> 
+  #change male to negative so it flips sides of the axis on a shared facet plot
+  mutate(n = ifelse(Sex == "Male", n * -1, n)) |> 
+  #change male female to factor
+  mutate(sex = factor(Sex, levels = c("Male","Female")))
+
+```
+
+```{r}
+#| label: Graphic_SexByAgeGroup_Pyramid
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+#Make the pyramid plot
+Plot_PopPyramid <- 
+  ggplot(DemoTable_SexByAgeGroup, aes(y = Age_Group, 
+                                      x = n, 
+                                      fill = sex)) +
+   geom_bar(stat = "identity") +
+   geom_text(aes(label = abs(n), 
+                 hjust = ifelse(
+                   sex == "Female", -.3, 1.3)),
+                 size = 3) +
+   scale_fill_manual(values = c(Female = "#440154", Male = "#35B779"), drop = FALSE) +
+   facet_wrap(~sex, scales = "free") +
+   facetted_pos_scales(
+     x = list(
+     scale_x_continuous(
+       labels = abs, expand = c(0, 2500, 0, 0),
+       limits = c(-20000, 0)),
+     scale_x_continuous(
+       expand = c(0, 0, 0, 2500),
+       limits = c(0, 20000))),
+     y = list(
+       scale_y_discrete(position = "right"),
+       scale_y_discrete(labels = NULL))) +
+  labs(
+    x = NULL, 
+    y = NULL, 
+    fill = "Member Sex",
+    title = "Alliance Membership by Gender and Age Group",
+    subtitle = current_year_month_graphics,
+    caption = "Source: BCBSAZ Health Choice Global Members") +
+  theme_classic() +
+  theme(
+    axis.text.y.right = element_text(
+      margin = margin(0, 2.2, 0, 2.2)),
+    legend.position = "bottom", 
+    legend.justification = "center",
+    panel.spacing.x = unit(0, "pt"))
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Plot_PopPyramid_", current_year_month, ".png", sep = ""))
+
+# Save the plot as a .png file
+# To monthly folder
+ggsave(output_filename, plot = Plot_PopPyramid, width = 6, height = 4, dpi = 300)
+# To general folder for dashboard
+ggsave("./data/output/Plot_PopPyramid.png", plot = Plot_PopPyramid, width = 6, height = 4, dpi = 300)
+
+Plot_PopPyramid
+
+```
+
+# Alliance Membership Allocation Information
+
+Alliance Providers are assigned members at the beginning of each contract year. The Alliance supports member voice and choice, and as such provider assignment changes throughout the year in accordance with changing member needs and new enrollments. The following table describes the assignment by provider at the beginning of the contract year, and the current health plan auto-assignment by provider at the time of this reporting.
+
+The ***Alliance Allocation*** represents the number of members for whom the providers are incentivised through the ACO. The ***BCBSAZ Auto Assignment*** represents the population of members for whose care the providers are responsible, and for whom they are measured.
+
+```{r}
+#| label: AllianceAllocation
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Load provider allocation data
+AllianceProvAllocation <- read_csv("./documents/data_original_2022-10-01_alliancePrvdrMbrAllocation.csv")
+
+# Wrangle contract allocation table for comparison
+Alliance_AllocationTable <- 
+  AllianceProvAllocation |>
+    filter(Provider != "EHS") |> 
+    rename(AllianceAllocation = `Annual Member Months`) |> 
+    rename(Provider_ShortName = Provider) |> 
+    mutate(Provider_ShortName = if_else((
+            Provider_ShortName == "Spectrum"), 
+            "SHG", 
+            Provider_ShortName)# the short name for spectrum varies depending on data source
+         ) |> 
+  mutate(Provider_ShortName = if_else((
+            Provider_ShortName == "WYGC"), 
+            "PH", 
+            Provider_ShortName)# the short name for spectrum varies depending on data source
+         ) |> 
+  mutate(Provider_ShortName = if_else((
+            Provider_ShortName == "SBH"), 
+            "SBHS", 
+            Provider_ShortName)# the short name for spectrum varies depending on data source
+         )
+
+# Using ActiveNAZMembership Wrangle BCBASAZ Auto Enrolled to filter and count members for Alliance Providers
+HCA_AutoEnrolled <- ActiveNAZMembership |> 
+  filter(BHHShortName != "EHS") |> 
+  count(BHHShortName) |>
+  rename(HCA_Enrollment = n)
+
+# Rename to match for merging
+Alliance_AllocationTable <-
+  Alliance_AllocationTable |> 
+  rename("BHHShortName" = Provider_ShortName)
+
+# Create a table comparing auto-enrollment with contract allocation
+# This is a Transparency Table for All Alliance Providers
+ContractAlloc_v_Assignment <- 
+  merge(x = Alliance_AllocationTable, #NARBHA Contract Allocation
+        y = HCA_AutoEnrolled, #HCA GlobalMembers Allocation
+        by ="BHHShortName") |> 
+  mutate(PercentDifference = percent(
+    ((HCA_Enrollment-AllianceAllocation)/AllianceAllocation))) |> 
+  mutate(PercentOfMembership = percent(
+    AllianceAllocation/(sum(AllianceAllocation)))) 
+
+# Export the Alloc_v_Assignment table as a csv for reference, date is date of Progress Report
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("ContractAlloc_v_Assignment_", current_year_month, ".csv", sep = ""))
+
+write.csv(ContractAlloc_v_Assignment, output_filename)
+
+```
+
+```{r}
+#| label: Graphic_AllianceAllocation_Table
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+Table_Alloc_v_Assignment <- 
+  ContractAlloc_v_Assignment |> 
+  rename(`Alliance Provider` = "BHHShortName",
+         `Alliance Allocation` = "AllianceAllocation",
+         `HCA AutoEnrollment` = "HCA_Enrollment",
+         `Percent Difference` = "PercentDifference",
+         `Percent of Membership` = "PercentOfMembership") |> 
+  gt() %>%
+    fmt_number(
+      columns = vars(`Alliance Allocation`, 
+                     `HCA AutoEnrollment`),
+      decimals = 0,
+      sep_mark = ","
+    ) |> 
+  tab_header(
+    title = "Provider Contract Allocation v. HCA Auto-Assignment",
+    subtitle = current_year_month_graphics
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(align = "left")
+    ),
+    locations = list(
+      cells_title(groups = c("title", "subtitle"))
+    )
+  )
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Table_ContractAlloc_v_Assignment_", current_year_month, ".png", sep = ""))
+
+# Save the table as a .png file
+gtsave(Table_Alloc_v_Assignment, filename = output_filename)
+
+# To general folder for dashboard
+gtsave(Table_Alloc_v_Assignment, filename = "./data/output/Table_ContractAlloc_v_Assignment.png")
+
+Table_Alloc_v_Assignment
+```
+
+
+# Performance Measurement
+
+The goal of the Alliance is to improve the Effectiveness of Care in the ACO community. We focus on the following three domains:
+
+  -   Follow Up after Hospitalization for Mental Illness (FUH 7 Day)
+  -   Follow Up after Emergency Department visit for Mental Illness (FUM7)
+  -   Anti-depressant Medication Management (AMM2)
+
+VBP Quality Rosters are aggregated and calculated in the Value Based Data Project
+
+## All Alliance Performance Scores
+
+```{r}
+
+VBPQR_AllProviders_AllMeasures <- read.csv("./data/input/VBPQR_AllProviders_AllMeasures.csv")
+
+```
+
+```{r}
+
+PercentCompliant <-
+  VBPQR_AllProviders_AllMeasures |> 
+  mutate(ClaimsAdjudicatedThrough = as.Date(ClaimsAdjudicatedThrough))
+
+# Find the most recent date in the 'ClaimsAdjudicatedThrough' column
+max_date <- max(PercentCompliant$ClaimsAdjudicatedThrough)
+
+# Filter the data frame to only include rows with the most recent date
+PercentCompliant <-
+  PercentCompliant %>%
+    filter(ClaimsAdjudicatedThrough == max_date) |> 
+    filter(MeasureID != "HDO") |> 
+    group_by(MeasureID) %>%
+    summarize(Sum_Open_Count = sum(Open_Count),
+            Sum_Closed_Count = sum(Closed_Count),
+            Sum_Total_Count = sum(Total_Count)) |> 
+    mutate(PercentCompliant = Sum_Closed_Count / Sum_Total_Count) |> 
+    mutate(NCQAMean = if_else(MeasureID == "AMM", .5729,
+                                     ifelse(MeasureID == "FUH", .3936, 
+                                            ifelse(MeasureID == "FUM", .401, NA
+                                     )))) |> 
+    mutate(PerformanceScore = PercentCompliant - NCQAMean)
+
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("PercentCompliant_", current_year_month, ".csv", sep = ""))
+
+write.csv(PercentCompliant, output_filename)
+
+
+```
+
+```{r}
+#| label: Graphic_Percent Compliant
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+Table_PercentCompliant <-
+  PercentCompliant |> 
+    mutate(PercentCompliant = percent(PercentCompliant),
+           NCQAMean = percent(NCQAMean),
+           PerformanceScore = percent(PerformanceScore)) |> 
+    rename(Compliant = "Sum_Closed_Count",
+           `Non-Compliant` = "Sum_Open_Count",
+           Total = "Sum_Total_Count",
+           `Percent Compliant` = "PercentCompliant",
+           Target = "NCQAMean",
+           `Performance Score` = "PerformanceScore") |> 
+    select(MeasureID,
+           Compliant,
+           `Non-Compliant`,
+           Total,
+           `Percent Compliant`,
+           Target,
+           `Performance Score`) |> 
+  gt() |> 
+    fmt_number(
+      columns = vars(`Non-Compliant`,
+                     Compliant,
+                     Total),
+      decimals = 0,
+      sep_mark = ","
+    ) |> 
+    fmt_number(
+      columns = `Performance Score`,
+      decimals = 2,
+      force_sign = TRUE
+      ) |> 
+    cols_width(MeasureID ~ px(100),
+               Compliant ~ px(100),
+               `Non-Compliant` ~ px(100),
+               Total ~ px(75),
+               `Percent Compliant` ~ px(100),
+               Target ~ px(100),
+               `Performance Score` ~ px(125)) |> 
+  tab_header(
+    title = "Alliance ACO Value Based Performance",
+    subtitle = current_year_month_graphics
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(align = "left")
+    ),
+    locations = list(
+      cells_title(groups = c("title", "subtitle"))
+    )
+  ) |> 
+  tab_source_note(source_note = paste("Claims adjudicated througth:", max_date))
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Table_PercentCompliant_", current_year_month, ".png", sep = ""))
+
+# Save the table as a .png file
+gtsave(Table_PercentCompliant, filename = output_filename)
+
+# To general folder for dashboard
+gtsave(Table_PercentCompliant, filename = "./data/output/Table_PercentCompliant.png")
+
+Table_PercentCompliant
+```
+
+## Individual Performance Scores
+
+```{r}
+
+IndivProviderPerformance <-
+  VBPQR_AllProviders_AllMeasures |> 
+  mutate(ClaimsAdjudicatedThrough = as.Date(ClaimsAdjudicatedThrough))
+
+# Find the most recent date in the 'ClaimsAdjudicatedThrough' column
+max_date <- max(IndivProviderPerformance$ClaimsAdjudicatedThrough)
+
+# Filter the data frame to only include rows with the most recent date
+IndivProviderPerformance <-
+  IndivProviderPerformance %>%
+    filter(ClaimsAdjudicatedThrough == max_date) |> 
+    filter(MeasureID != "HDO") |> 
+    group_by(ProviderShortname, MeasureID) %>%
+    summarize(Sum_Open_Count = sum(Open_Count),
+            Sum_Closed_Count = sum(Closed_Count),
+            Sum_Total_Count = sum(Total_Count)) |> 
+    mutate(PercentCompliant = Sum_Closed_Count / Sum_Total_Count) |> 
+    mutate(NCQAMean = if_else(MeasureID == "AMM", .608,
+                                     ifelse(MeasureID == "FUH", .599, 
+                                            ifelse(MeasureID == "FUM", .401, NA
+                                     )))) |> 
+    mutate(PerformanceScore = PercentCompliant - NCQAMean)
+
+# Define the output filename
+output_filename <- file.path(folder_path, paste("IndivProviderPerformance_", current_year_month, ".csv", sep = ""))
+
+write.csv(IndivProviderPerformance, output_filename)
+
+
+```
+
+
+
+
+```{r}
+#| label: Lollipop figure
+#| include: true
+#| echo: false
+#| warning: false
+#| error: false
+
+# Calculate PercentTotalEligible
+IndivProviderPerformance <-
+  IndivProviderPerformance %>%
+  group_by(MeasureID) %>%
+  mutate(PercentTotalEligible = Sum_Total_Count / sum(Sum_Total_Count)) 
+
+# Create the lollipop plot
+Plot_AllProvLollipop <- 
+  IndivProviderPerformance |> 
+    ggplot(aes(x = ProviderShortname, 
+               y = PercentCompliant)) +
+      geom_line(aes(y = NCQAMean, 
+                group = MeasureID), 
+            color = "#35B779", 
+            size = 2) +
+      geom_segment(aes(xend = ProviderShortname, 
+                   y = 0, 
+                   yend = PercentCompliant), 
+               color = "#440154") +
+      geom_point(fill = "#440154", 
+             color = "#440154", 
+             size = 3.5) + # Set both fill and color to "#440154"
+      facet_grid(cols = vars(MeasureID)) +
+      theme_bw() +
+      theme(legend.position = "none",
+            axis.text.x = element_text(angle = 65, hjust = 1),
+            axis.title.x = element_blank(),
+            axis.line = element_blank(),
+            strip.background = element_rect(fill = "#440154"),
+            strip.text.x = element_text(size = 12, color = "white", face = "bold")
+            ) +
+      labs(title = "Alliance Provider Target Measure Compliance",
+           subtitle = paste("VBP Quality Report Date:", current_year_month_graphics),
+           caption = paste("Data source: BCBSAZ VBP Report. Claims Adjudicated Through:", max_date)
+           )
+ 
+# Define the output filename
+output_filename <- file.path(folder_path, paste("Plot_AllProviderLollipop_", current_year_month, ".png", sep = ""))
+
+# Save the plot as a .png file
+# To monthly folder
+ggsave(output_filename, plot = Plot_AllProvLollipop, width = 6, height = 4, dpi = 300)
+# To general folder for dashboard
+ggsave("./data/output/Plot_AllProviderLollipop.png", plot = Plot_AllProvLollipop, width = 6, height = 4, dpi = 300)
+
+Plot_AllProvLollipop
+ 
+```
